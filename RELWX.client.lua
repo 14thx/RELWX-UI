@@ -1,5 +1,7 @@
 --// ============================================================
 --//  RELWX HUB  |  UI v7  (UI ONLY — 3 Tabs + Real FPS/MS)
+--//  - ลบการปรับสีทีละจุด (ColorRow) ออก เหลือแค่ธีมสำเร็จรูป
+--//  - ย้ายเมนู "ตั้งค่า" ไปไว้ล่างสุด
 --// ============================================================
 
 local Players = game:GetService("Players")
@@ -8,7 +10,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local SoundService = game:GetService("SoundService")
-local GuiService = game:GetService("GuiService")
 local Debris = game:GetService("Debris")
 
 -- ฟอนต์ UI
@@ -506,7 +507,6 @@ local function SavePosition(target, kx, ky)
     SetConfig(ky, math.floor(fy * 10000) / 10000)
 end
 
--- [แก้ไขบั๊ก] ตัวแปร dragged เปลี่ยนเป็น dragInput เพื่อให้คลิกเปิด UI ได้
 local function MakeDraggable(handle, target, kx, ky, onClick)
     local dragging, dragInput, startPos, startCenter, moved = false, nil, nil, nil, false
     handle.InputBegan:Connect(function(input)
@@ -1023,168 +1023,7 @@ local function Slider(page, opts)
     if opts.callback then task.defer(opts.callback, value) end
 end
 
--- Color Picker
-local PaletteColors = { "FFFFFF", "BEBEBE", "6B6B76", "2A2A33", "0E0E14", "000000", "8B5CF6", "6366F1", "3B82F6", "22D3EE", "10B981", "84CC16", "FACC15", "FB923C", "EF4444", "EC4899" }
-local ActiveOverlay, ActivePopup
-local PaletteConns = {}
-local function ClosePalette()
-    for _, c in ipairs(PaletteConns) do pcall(function() c:Disconnect() end) end
-    PaletteConns = {}
-    if ActiveOverlay then ActiveOverlay:Destroy(); ActiveOverlay = nil end
-    if ActivePopup then ActivePopup:Destroy(); ActivePopup = nil end
-end
-local themePending = false
-local function QueueTheme()
-    if themePending then return end
-    themePending = true
-    task.defer(function() themePending = false; ApplyTheme() end)
-end
-local function OpenPalette(title, key, onPick)
-    ClosePalette()
-    ActiveOverlay = New("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 1, BorderSizePixel = 0, Text = "", AutoButtonColor = false, ZIndex = 150 }, Screen)
-    Tween(ActiveOverlay, 0.2, { BackgroundTransparency = 0.45 })
-    ActiveOverlay.MouseButton1Click:Connect(ClosePalette)
-    local PW, PH = 240, 304
-    local pop = New("CanvasGroup", { Size = UDim2.fromOffset(PW, PH), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, GroupTransparency = 1, ZIndex = 160, Active = true }, Screen)
-    Corner(pop, 16)
-    Stroke(pop, Theme.Accent, 1.5, 0.35)
-    local vs = ViewSize()
-    New("UIScale", { Scale = math.clamp((vs.Y - 24) / PH, 0.5, 1) }, pop)
-    ActivePopup = pop
-    Tween(pop, 0.2, { GroupTransparency = 0 })
-    local okc, c0 = pcall(Color3.fromHex, Config[key])
-    if not okc then c0 = Color3.new(1, 1, 1) end
-    local H, S, V = c0:ToHSV()
-    local ttl = Text(pop, title or "เลือกสี", 13, FNT.B, Theme.Text)
-    ttl.Position = UDim2.fromOffset(14, 10)
-    ttl.Size = UDim2.new(1, -130, 0, 20)
-    local prev = New("Frame", { Size = UDim2.fromOffset(36, 18), Position = UDim2.fromOffset(PW - 82, 11), BorderSizePixel = 0 }, pop)
-    Corner(prev, 6)
-    Stroke(prev, Color3.new(1, 1, 1), 1, 0.75)
-    local closeB = New("TextButton", { Size = UDim2.fromOffset(24, 24), Position = UDim2.fromOffset(PW - 38, 8), BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0, Text = "×", TextSize = 18, Font = FNT.B, TextColor3 = Theme.Sub, AutoButtonColor = false }, pop)
-    Corner(closeB, 8)
-    closeB.MouseButton1Click:Connect(ClosePalette)
-    local sv = New("Frame", { Size = UDim2.fromOffset(PW - 28, 124), Position = UDim2.fromOffset(14, 40), BorderSizePixel = 0, BackgroundColor3 = Color3.fromHSV(H, 1, 1) }, pop)
-    Corner(sv, 10)
-    local wf = New("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1) }, sv)
-    Corner(wf, 10)
-    New("UIGradient", { Transparency = NumberSequence.new(0, 1) }, wf)
-    local bf = New("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0, BackgroundColor3 = Color3.new(0, 0, 0) }, sv)
-    Corner(bf, 10)
-    New("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(1, 0) }, bf)
-    local svCur = New("Frame", { Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1, BorderSizePixel = 0 }, sv)
-    Corner(svCur, 8)
-    Stroke(svCur, Color3.new(1, 1, 1), 2.5, 0)
-    local svHit = New("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", AutoButtonColor = false }, sv)
-    local hue = New("Frame", { Size = UDim2.fromOffset(PW - 28, 14), Position = UDim2.fromOffset(14, 176), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1) }, pop)
-    Corner(hue, 7)
-    New("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)), ColorSequenceKeypoint.new(1/6, Color3.fromRGB(255, 255, 0)), ColorSequenceKeypoint.new(2/6, Color3.fromRGB(0, 255, 0)), ColorSequenceKeypoint.new(3/6, Color3.fromRGB(0, 255, 255)), ColorSequenceKeypoint.new(4/6, Color3.fromRGB(0, 0, 255)), ColorSequenceKeypoint.new(5/6, Color3.fromRGB(255, 0, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)) }) }, hue)
-    local hueCur = New("Frame", { Size = UDim2.fromOffset(18, 18), AnchorPoint = Vector2.new(0.5, 0.5), BorderSizePixel = 0 }, hue)
-    Corner(hueCur, 9)
-    Stroke(hueCur, Color3.new(1, 1, 1), 2.5, 0)
-    local hueHit = New("TextButton", { Size = UDim2.new(1, 0, 1, 12), Position = UDim2.fromOffset(0, -6), BackgroundTransparency = 1, Text = "", AutoButtonColor = false }, hue)
-    local box = New("TextBox", { Size = UDim2.fromOffset(PW - 28, 30), Position = UDim2.fromOffset(14, 202), BackgroundColor3 = Theme.Surface2, BorderSizePixel = 0, Text = "", PlaceholderText = "#RRGGBB", ClearTextOnFocus = false, TextSize = 12, Font = FNT.M, TextColor3 = Theme.Text, PlaceholderColor3 = Theme.Muted }, pop)
-    Corner(box, 9)
-    Stroke(box, Theme.Stroke, 1, 0.3)
-    local function render(fromBox)
-        local c = Color3.fromHSV(H, S, V)
-        sv.BackgroundColor3 = Color3.fromHSV(H, 1, 1)
-        svCur.Position = UDim2.fromScale(S, 1 - V)
-        hueCur.Position = UDim2.fromScale(H, 0.5)
-        hueCur.BackgroundColor3 = Color3.fromHSV(H, 1, 1)
-        prev.BackgroundColor3 = c
-        if not fromBox then box.Text = "#" .. string.upper(c:ToHex()) end
-        return c
-    end
-    local function commit(fromBox) onPick(render(fromBox)) end
-    render(false)
-    local function bindDrag(hit, onMove)
-        local dragging, dInput = false, nil
-        local off = Vector2.zero
-        hit.InputBegan:Connect(function(input)
-            if not IsPointer(input) then return end
-            local p = Vector2.new(input.Position.X, input.Position.Y)
-            local a, sz = hit.AbsolutePosition, hit.AbsoluteSize
-            -- [แก้ไข] ป้องกัน GuiInset คืนค่าหลายตัวแปร
-            local okInset, inset = pcall(function() return GuiService:GetGuiInset() end)
-            local q = p + (okInset and inset or Vector2.zero)
-            local inside = q.X >= a.X and q.X <= a.X + sz.X and q.Y >= a.Y and q.Y <= a.Y + sz.Y
-            off = inside and (okInset and inset or Vector2.zero) or Vector2.zero
-            dragging = true
-            dInput = input
-            onMove(p + off)
-        end)
-        PaletteConns[#PaletteConns + 1] = UIS.InputChanged:Connect(function(input)
-            if dragging and IsMove(input) then
-                if input.UserInputType == Enum.UserInputType.Touch and input ~= dInput then return end
-                onMove(Vector2.new(input.Position.X, input.Position.Y) + off)
-            end
-        end)
-        PaletteConns[#PaletteConns + 1] = UIS.InputEnded:Connect(function(input)
-            if dragging and IsPointer(input) then
-                if input.UserInputType == Enum.UserInputType.Touch and input ~= dInput then return end
-                dragging = false
-            end
-        end)
-    end
-    bindDrag(svHit, function(pos)
-        S = math.clamp((pos.X - sv.AbsolutePosition.X) / math.max(1, sv.AbsoluteSize.X), 0, 1)
-        V = 1 - math.clamp((pos.Y - sv.AbsolutePosition.Y) / math.max(1, sv.AbsoluteSize.Y), 0, 1)
-        commit(false)
-    end)
-    bindDrag(hueHit, function(pos)
-        H = math.clamp((pos.X - hue.AbsolutePosition.X) / math.max(1, hue.AbsoluteSize.X), 0, 1)
-        commit(false)
-    end)
-    box.FocusLost:Connect(function()
-        local h = string.match(box.Text, "^%s*#?(%x%x%x%x%x%x)%s*$")
-        if h then
-            H, S, V = Color3.fromHex(h):ToHSV()
-            commit(false)
-        else
-            box.TextColor3 = RGB(235, 75, 90)
-            task.delay(0.8, function() if box.Parent then box.TextColor3 = Theme.Text; render(false) end end)
-        end
-    end)
-    for i, hexv in ipairs(PaletteColors) do
-        local c = Color3.fromHex(hexv)
-        local sw = New("TextButton", { Size = UDim2.fromOffset(22, 22), Position = UDim2.fromOffset(14 + ((i - 1) % 8) * 27, 244 + math.floor((i - 1) / 8) * 28), BackgroundColor3 = c, BorderSizePixel = 0, Text = "", AutoButtonColor = false }, pop)
-        Corner(sw, 11)
-        Stroke(sw, Color3.new(1, 1, 1), 1, 0.8)
-        sw.MouseButton1Click:Connect(function() H, S, V = c:ToHSV(); commit(false) end)
-    end
-end
-
-local ColorRefreshers = {}
-local function ColorRow(page, title, key)
-    local row = Panel(page, UDim2.new(1, 0, 0, 50), "TextButton")
-    HoverRow(row)
-    Register(row, title)
-    local t = Text(row, title, 12, FNT.M, "Text")
-    t.Position = UDim2.fromOffset(18, 0)
-    t.Size = UDim2.new(1, -176, 1, 0)
-    local hexLabel = Text(row, "", 10, FNT.M, "Muted", Enum.TextXAlignment.Right)
-    hexLabel.Position = UDim2.new(1, -152, 0, 0)
-    hexLabel.Size = UDim2.fromOffset(84, 50)
-    local swatch = New("Frame", { Size = UDim2.fromOffset(44, 24), Position = UDim2.new(1, -60, 0.5, -12), BorderSizePixel = 0 }, row)
-    Corner(swatch, 8)
-    Stroke(swatch, Color3.new(1, 1, 1), 1, 0.7)
-    local function refresh()
-        swatch.BackgroundColor3 = Hex(key, RGB(100, 100, 100))
-        hexLabel.Text = string.upper(tostring(Config[key]))
-    end
-    refresh()
-    Refreshers[#Refreshers + 1] = refresh
-    ColorRefreshers[#ColorRefreshers + 1] = refresh
-    row.MouseButton1Click:Connect(function()
-        OpenPalette(title, key, function(c)
-            SetConfig(key, "#" .. string.upper(c:ToHex()))
-            refresh()
-            QueueTheme()
-        end)
-    end)
-end
-
+-- ธีมสำเร็จรูป
 local ThemePresets = {
     { "Graphite", "#C9CBD3", "#0A0A0C", "#232328" },
     { "Violet", "#8B5CF6", "#09090D", "#1C1C26" },
@@ -1216,8 +1055,7 @@ local function ThemeGrid(page)
             SetConfig("FloatingButtonColor", p[3])
             SetConfig("FloatingBorderColor", p[2])
             SetConfig("FloatingGlowColor", p[2])
-            for _, fn in ipairs(ColorRefreshers) do pcall(fn) end
-            QueueTheme()
+            ApplyTheme()
             Toast("ใช้ธีม " .. p[1])
         end)
     end
@@ -1240,12 +1078,12 @@ local UiCard = Panel(Home, UDim2.new(1, 0, 0, 72))
 local UiCardTitle = Text(UiCard, "ระบบ UI พร้อมใช้งาน", 13, FNT.B, "Text")
 UiCardTitle.Position = UDim2.fromOffset(16, 12)
 UiCardTitle.Size = UDim2.new(1, -32, 0, 20)
-local UiCardDesc = Text(UiCard, "คุณสามารถปรับแต่งสี, ขนาด, และตำแหน่งของหน้าต่างได้ที่แท็บ 'ตั้งค่า'", 11, FNT.R, "Muted")
+local UiCardDesc = Text(UiCard, "คุณสามารถปรับแต่งขนาด, และตำแหน่งของหน้าต่างได้ที่แท็บ 'ตั้งค่า'", 11, FNT.R, "Muted")
 UiCardDesc.Position = UDim2.fromOffset(16, 36)
 UiCardDesc.Size = UDim2.new(1, -32, 0, 20)
 
 --==================================================
--- [ แท็บ 3 ] SYSTEM
+-- [ แท็บ 2 ] SYSTEM
 --==================================================
 local SystemPage = MakePage("System", "ระบบ", "ข้อมูลการทำงานของ UI และเครื่องของคุณ")
 local SysCard1 = Panel(SystemPage, UDim2.new(1, 0, 0, 64))
@@ -1265,7 +1103,7 @@ SysDesc2.Position = UDim2.fromOffset(16, 33)
 SysDesc2.Size = UDim2.new(1, -32, 0, 18)
 
 --==================================================
--- [ แท็บ 2 ] SETTINGS
+-- [ แท็บ 3 ] SETTINGS (สร้างไว้บนสุด แต่จะจัดลำดับเมนูไว้ล่างสุด)
 --==================================================
 local Settings = MakePage("Settings", "ตั้งค่า", "ปรับแต่งหน้าตา RELWX  •  เปลี่ยนแล้วเซฟทันที")
 
@@ -1276,16 +1114,6 @@ Slider(Settings, { key = "UIScalePercent", title = "ขนาดหน้าต�
 
 Section(Settings, "ธีมสำเร็จรูป")
 ThemeGrid(Settings)
-
-Section(Settings, "ธีม UI")
-ColorRow(Settings, "สีหลัก UI", "UIAccentColor")
-ColorRow(Settings, "สีพื้นหลัง UI", "UIBackgroundColor")
-ColorRow(Settings, "สีปุ่ม UI", "UIButtonColor")
-
-Section(Settings, "ปุ่มลอย RX")
-ColorRow(Settings, "สีปุ่ม RX", "FloatingButtonColor")
-ColorRow(Settings, "สีขอบ RX", "FloatingBorderColor")
-ColorRow(Settings, "สี Glow RX", "FloatingGlowColor")
 
 Section(Settings, "Config")
 local CfgCard = Panel(Settings, UDim2.new(1, 0, 0, 64))
@@ -1333,12 +1161,12 @@ ResetRow.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- SIDEBAR CATEGORIES (3 แท็บ)
+-- SIDEBAR CATEGORIES (จัดลำดับ: หน้าหลัก -> ระบบ -> ตั้งค่า)
 --==================================================
 CatGroup("เมนูหลัก")
 Category("หน้าหลัก", "Home", "grid")
-Category("ตั้งค่า", "Settings", "ring")
 Category("ระบบ", "System", "sliders")
+Category("ตั้งค่า", "Settings", "ring") -- ตั้งค่าอยู่ล่างสุด
 
 --==================================================
 -- FLOATING RX BUTTON
@@ -1378,4 +1206,4 @@ RefreshHome()
 if Config.WindowVisible then PlayOpen() end
 if not LoadedFromFile then SaveConfig(true) end
 
-print("[RELWX] UI v7 (3 Tabs + Real FPS/MS) Loaded")
+print("[RELWX] UI v7 (3 Tabs, Settings at bottom) Loaded")
