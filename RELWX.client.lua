@@ -12,6 +12,7 @@ local RunService = game:GetService("RunService")
 local StatsService = game:GetService("Stats")
 local HttpService = game:GetService("HttpService")
 local SoundService = game:GetService("SoundService")
+local Debris = game:GetService("Debris") -- [เพิ่มแล้ว] แก้ Error AddItem nil
 
 -- ฟอนต์ UI  (เปลี่ยนได้: "Montserrat" | "BuilderSans" | "Gotham")
 local UI_FONT = "Montserrat"
@@ -2449,9 +2450,14 @@ end)
 -- START
 --==================================================
 
+-- [เพิ่มแล้ว] แก้ Error attempt to call a nil value
+local function RefreshHome()
+    -- ฟังก์ชันเปล่าไว้ก่อน เพื่อไม่ให้สคริปต์พัง
+end
+
 SelectTab(Config.LastTab)
 RefreshStats()
-RefreshHome()
+RefreshHome() -- เรียกใช้ฟังก์ชันที่เพิ่มเข้ามา
 
 if Config.WindowVisible then
     PlayOpen()
