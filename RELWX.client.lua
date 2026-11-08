@@ -1,5 +1,5 @@
 --// ============================================================
---//  RELWX HUB x NEXUS TYPER TOWN  |  PART 1/3
+--//  RELWX HUB x NEXUS TYPER TOWN | FULL VERSION | PART 1/4
 --// ============================================================
 
 local Players = game:GetService("Players")
@@ -7,18 +7,37 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local SoundService = game:GetService("SoundService")
 local Debris = game:GetService("Debris")
 local MarketplaceService = game:GetService("MarketplaceService")
-local TeleportService = game:GetService("TeleportService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local UIS = UserInputService
 
--- ANTI-KICK
+-- ฟอนต์ UI
+local UI_FONT = "Montserrat"
+local function E(name)
+    local ok, v = pcall(function() return Enum.Font[name] end)
+    return ok and v or Enum.Font.Gotham
+end
+local FontFamilies = {
+    Montserrat = { R = E("Montserrat"), M = E("MontserratMedium"), B = E("MontserratBold") },
+    BuilderSans = { R = E("BuilderSans"), M = E("BuilderSansMedium"), B = E("BuilderSansBold") },
+    Gotham = { R = Enum.Font.Gotham, M = Enum.Font.GothamMedium, B = Enum.Font.GothamBold },
+}
+local FNT = FontFamilies[UI_FONT] or FontFamilies.Gotham
+
+local SOUND_ON = "rbxasset://sounds/switch.wav"
+local SOUND_OFF = "rbxasset://sounds/button.wav"
+local SOUND_FALLBACK = "rbxasset://sounds/electronicpingshort.wav"
+
+-- ==============================================================================
+-- 0. ANTI-KICK & ANTI-BAN SHIELD
+-- ==============================================================================
 pcall(function()
     local lp = Players.LocalPlayer
     if hookmetamethod then
@@ -27,7 +46,7 @@ pcall(function()
             local method = getnamecallmethod()
             local args = {...}
             if (method == "Kick" or method == "kick") and (self == lp or self == Players) then
-                warn("🛡️ [RELWX ANTI-KICK] บล็อก Kick: " .. tostring(args[1] or "Unknown"))
+                warn("🛡️ [RELWX ANTI-KICK] บล็อกคำสั่ง Kick: " .. tostring(args[1] or "Unknown"))
                 return nil
             end
             if method == "FireServer" or method == "InvokeServer" then
@@ -49,14 +68,15 @@ pcall(function()
     end
 end)
 
--- GAME VARIABLES
+-- ==============================================================================
+-- 1. GAME VARIABLES & LOCATIONS
+-- ==============================================================================
 local TOWN_CAR_SPAWN = Vector3.new(-311.83, 17.5, 5490.39)
-local VehicleDriveSpeed = 300
+local LAST_STORED_BOOTH = nil
+local isAutoEatEnabled = true
+local isAutoCoffeeEnabled = true
 local isAutoEatAndDrinkEnabled = true
-local isAutoFishingEnabled = false
-local MY_SPAWNED_CAR = nil
-local isConsumingItem = false
-local sessionStart = os.time()
+local VehicleDriveSpeed = 300
 
 local TYPER_LOCATIONS = {
     Bread = { Booth = Vector3.new(872.19, 15.90, 4682.54), Farm = Vector3.new(828.31, 11.21, 4817.85) },
@@ -67,6 +87,11 @@ local TYPER_LOCATIONS = {
     Tomato = { Booth = Vector3.new(-2294.10, 31.28, -1273.91), Farm = Vector3.new(-2319.61, 27.21, -1229.19) },
     Banana = { Booth = Vector3.new(-1528.59, 30.34, -1253.46), Farm = Vector3.new(-1545.12, 28.80, -1126.87) },
     Crab = { Booth = Vector3.new(1442.30, 30.56, 613.34), Farm = Vector3.new(1400.27, 28.69, 648.22) },
+    Coconut = { Booth = Vector3.new(-1296.67, 10.37, 4216.59), Farm = Vector3.new(-1333.68, 10.87, 4376.67) },
+    Corn = { Booth = Vector3.new(-164.76, 12.39, 4426.24), Farm = Vector3.new(-264.44, 11.95, 4527.12) },
+    Egg = { Booth = Vector3.new(-1680.12, 11.39, 4390.69), Farm = Vector3.new(-1799.30, 10.98, 4492.20) },
+    Milk = { Booth = Vector3.new(-903.04, 11.41, 4716.36), Farm = Vector3.new(-998.66, 11.23, 4831.62) },
+    Sugarcane = { Booth = Vector3.new(-1805.15, 12.98, 3816.89), Farm = Vector3.new(-1922.31, 13.06, 3962.32) },
     Rock = { Booth = Vector3.new(-4163.51, 25.33, -1234.29), Farm = Vector3.new(-4138.03, 29.88, -1286.63), Process = Vector3.new(-935.29, 6.93, 6786.66) },
     Svibranium = { Booth = Vector3.new(2785.16, 30.11, -262.38), Farm = Vector3.new(2723.67, 28.51, -236.17), Process = Vector3.new(-927.35, 6.93, 6763.02) },
     Food = { Crafting = Vector3.new(3442.48, 56.40, 3925.24), BananaProcess = Vector3.new(3429.20, 56.80, 3911.80) },
@@ -75,9 +100,25 @@ local TYPER_LOCATIONS = {
 
 local FISHING_PARKING_POS = Vector3.new(-902.46, 3.41, 2964.32)
 local FISHING_SPOT = Vector3.new(-955.06, -2.65, 2907.18)
+local FISHING_LOOK_TARGET = FISHING_SPOT + Vector3.new(-0.25, 0, -0.97) * 20
 local BAIT_SHOP_POS = Vector3.new(-949.31, 16.57, 4861.12)
+local isAutoFishingEnabled = false
+local fishingThread = nil
+local fishingPlatform = nil
+local isAutoHopOnPlayerNearbyEnabled = true
+local autoHopDistance = 60
+local isHopping = false
+local VehicleHeightOffset = 0
+local isVehiclePlatformEnabled = false
+local isVehicleNoclipEnabled = true
+local vehiclePlatformPart = nil
+local MY_SPAWNED_CAR = nil
+local isConsumingItem = false
+local sessionStart = os.time()
 
--- CONFIG
+-- ==============================================================================
+-- 2. CONFIG & THEME (RELWX UI)
+-- ==============================================================================
 local CONFIG_FILE = "RELWX_UI_Config.json"
 local Defaults = {
     UIAccentColor = "#C9CBD3", UIBackgroundColor = "#0A0A0C", UIButtonColor = "#232328",
@@ -135,7 +176,6 @@ local function SetConfig(key, value)
     SaveConfig()
 end
 
--- THEME
 local function RGB(r, g, b) return Color3.fromRGB(r, g, b) end
 local function Lum(c) return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B end
 local function Hex(key, fallback)
@@ -147,13 +187,9 @@ local function ComputeTheme()
     local bg = Hex("UIBackgroundColor", RGB(8, 8, 8))
     local dark = Lum(bg) < 0.5
     local to = dark and Color3.new(1, 1, 1) or Color3.new(0, 0, 0)
-    Theme.Bg = bg
-    Theme.Surface = bg:Lerp(to, 0.05)
-    Theme.Surface2 = bg:Lerp(to, 0.095)
-    Theme.Stroke = bg:Lerp(to, 0.17)
+    Theme.Bg = bg; Theme.Surface = bg:Lerp(to, 0.05); Theme.Surface2 = bg:Lerp(to, 0.095); Theme.Stroke = bg:Lerp(to, 0.17)
     Theme.Text = dark and RGB(244, 244, 244) or RGB(20, 20, 20)
-    Theme.Sub = Theme.Text:Lerp(bg, 0.32)
-    Theme.Muted = Theme.Text:Lerp(bg, 0.58)
+    Theme.Sub = Theme.Text:Lerp(bg, 0.32); Theme.Muted = Theme.Text:Lerp(bg, 0.58)
     Theme.Accent = Hex("UIAccentColor", RGB(190, 190, 190))
     Theme.OnAccent = Lum(Theme.Accent) > 0.55 and RGB(15, 15, 15) or RGB(255, 255, 255)
     Theme.Button = Hex("UIButtonColor", RGB(36, 36, 36))
@@ -165,12 +201,11 @@ ComputeTheme()
 local ThemeHooks = {}
 local function OnTheme(fn) ThemeHooks[#ThemeHooks + 1] = fn; pcall(fn) end
 local function Bind(obj, prop, key) OnTheme(function() obj[prop] = Theme[key] end) end
-local function ApplyTheme()
-    ComputeTheme()
-    for _, fn in ipairs(ThemeHooks) do pcall(fn) end
-end
+local function ApplyTheme() ComputeTheme(); for _, fn in ipairs(ThemeHooks) do pcall(fn) end end
 
--- HELPERS
+-- ==============================================================================
+-- 3. HELPER FUNCTIONS (UI)
+-- ==============================================================================
 local Orders = setmetatable({}, { __mode = "k" })
 local function Next(parent) Orders[parent] = (Orders[parent] or 0) + 1; return Orders[parent] end
 local function New(className, props, parent)
@@ -186,11 +221,9 @@ end
 local function Pad(parent, l, r, t, b)
     return New("UIPadding", { PaddingLeft = UDim.new(0, l or 0), PaddingRight = UDim.new(0, r or 0), PaddingTop = UDim.new(0, t or 0), PaddingBottom = UDim.new(0, b or 0) }, parent)
 end
-local function List(parent, padding)
-    return New("UIListLayout", { Padding = UDim.new(0, padding or 0), SortOrder = Enum.SortOrder.LayoutOrder }, parent)
-end
+local function List(parent, padding) return New("UIListLayout", { Padding = UDim.new(0, padding or 0), SortOrder = Enum.SortOrder.LayoutOrder }, parent) end
 local function Text(parent, text, size, font, color, align)
-    local l = New("TextLabel", { BackgroundTransparency = 1, BorderSizePixel = 0, Text = text or "", TextSize = size or 13, Font = font or Enum.Font.Gotham, TextXAlignment = align or Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd }, parent)
+    local l = New("TextLabel", { BackgroundTransparency = 1, BorderSizePixel = 0, Text = text or "", TextSize = size or 13, Font = font or FNT.R, TextXAlignment = align or Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Center, TextTruncate = Enum.TextTruncate.AtEnd }, parent)
     if type(color) == "string" then Bind(l, "TextColor3", color) elseif color then l.TextColor3 = color end
     return l
 end
@@ -198,38 +231,37 @@ local function Tween(obj, t, props, style, dir)
     local tw = TweenService:Create(obj, TweenInfo.new(t, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
     tw:Play(); return tw
 end
-local function Apply(obj, animate, props)
-    if animate then Tween(obj, 0.16, props) else for k, v in pairs(props) do obj[k] = v end end
-end
+local function Apply(obj, animate, props) if animate then Tween(obj, 0.16, props) else for k, v in pairs(props) do obj[k] = v end end end
 local function Panel(parent, size, class)
     local f = New(class or "Frame", { BorderSizePixel = 0, LayoutOrder = Next(parent) }, parent)
     if class == "TextButton" then f.Text = ""; f.AutoButtonColor = false end
     if size then f.Size = size end
-    Bind(f, "BackgroundColor3", "Surface")
-    Corner(f, 12)
-    Bind(Stroke(f, Theme.Stroke, 1, 0.4), "Color", "Stroke")
+    Bind(f, "BackgroundColor3", "Surface"); Corner(f, 12); Bind(Stroke(f, Theme.Stroke, 1, 0.4), "Color", "Stroke")
     return f
 end
 local function HoverRow(btn)
     local st = btn:FindFirstChildOfClass("UIStroke")
     btn.MouseEnter:Connect(function() Tween(btn, 0.12, { BackgroundColor3 = Theme.Surface2 }); if st then Tween(st, 0.12, { Transparency = 0.05 }) end end)
-    local sc
-    if btn:IsA("GuiButton") then
-        sc = New("UIScale", { Scale = 1 }, btn)
-        btn.MouseButton1Down:Connect(function() Tween(sc, 0.08, { Scale = 0.982 }) end)
-        btn.MouseButton1Up:Connect(function() Tween(sc, 0.18, { Scale = 1 }, Enum.EasingStyle.Back) end)
-    end
-    btn.MouseLeave:Connect(function() Tween(btn, 0.12, { BackgroundColor3 = Theme.Surface }); if st then Tween(st, 0.12, { Transparency = 0.4 }) end; if sc then Tween(sc, 0.12, { Scale = 1 }) end end)
+    btn.MouseLeave:Connect(function() Tween(btn, 0.12, { BackgroundColor3 = Theme.Surface }); if st then Tween(st, 0.12, { Transparency = 0.4 }) end end)
 end
 local function AccentGrad(parent, rotation)
     local g = New("UIGradient", { Rotation = rotation or 0 }, parent)
     OnTheme(function() g.Color = ColorSequence.new(Theme.Accent, Theme.Accent2) end)
     return g
 end
+local function Tint(parent)
+    local t = New("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1) }, parent)
+    Corner(t, 12)
+    local g = AccentGrad(t, 25)
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.8), NumberSequenceKeypoint.new(1, 1) })
+    return t
+end
 local function IsPointer(input) return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch end
 local function IsMove(input) return input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch end
 
--- GAME FUNCTIONS
+-- ==============================================================================
+-- 4. CORE GAME FUNCTIONS (จาก NEXUS HUB)
+-- ==============================================================================
 local function GrantAntiXGrace(seconds)
     seconds = seconds or 25
     pcall(function()
@@ -264,6 +296,8 @@ local function GetGroundLevel(x, z, fallbackY)
     local vehFolder = (workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Vehicles")) or workspace:FindFirstChild("Vehicles")
     if vehFolder then table.insert(filterList, vehFolder) end
     if MY_SPAWNED_CAR then table.insert(filterList, MY_SPAWNED_CAR) end
+    if vehiclePlatformPart then table.insert(filterList, vehiclePlatformPart) end
+    if fishingPlatform then table.insert(filterList, fishingPlatform) end
     params.FilterDescendantsInstances = filterList
     local result = workspace:Raycast(rayOrigin, rayDir, params)
     if result and result.Position then return result.Position.Y end
@@ -294,6 +328,9 @@ local function GetPlayerEnergy()
     if pd then local bv = pd:GetAttribute("Brain") or pd:GetAttribute("Energy"); if typeof(bv) == "number" then return bv end end
     return 100
 end
+--// ============================================================
+--//  RELWX HUB x NEXUS TYPER TOWN | FULL VERSION | PART 2/4
+--// ============================================================
 
 local function FindAvailableFood()
     local pd = LocalPlayer:FindFirstChild("PlayerData")
@@ -306,6 +343,14 @@ local function FindAvailableFood()
         if itemFolder and itemFolder:FindFirstChild(food) and itemFolder[food].Value > 0 then return food end
         if bp and bp:FindFirstChild(food) then return food end
         if char and char:FindFirstChild(food) then return food end
+    end
+    if pd then
+        for attr, val in pairs(pd:GetAttributes()) do
+            if typeof(val) == "number" and val > 0 then
+                local low = attr:lower()
+                if low:find("rice") or low:find("khao") or low:find("food") or low:find("kapao") or low:find("sushi") or low:find("sandwich") or low:find("burger") then return attr end
+            end
+        end
     end
     return nil
 end
@@ -322,7 +367,28 @@ local function FindAvailableCoffee()
         if bp and bp:FindFirstChild(drink) then return drink end
         if char and char:FindFirstChild(drink) then return drink end
     end
+    if pd then
+        for attr, val in pairs(pd:GetAttributes()) do
+            if typeof(val) == "number" and val > 0 then
+                local low = attr:lower()
+                if low:find("cocoa") or low:find("coffee") or low:find("cafe") or low:find("tea") or low:find("drink") or low:find("water") or low:find("hotcocoa") then return attr end
+            end
+        end
+    end
     return nil
+end
+
+local function UseItem(itemName)
+    pcall(function()
+        local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
+        if remCore then
+            local Remotes_m = require(remCore)
+            Remotes_m.Fire("_inventory", "Use", itemName)
+        else
+            local rem = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Remotes")
+            if rem and rem:FindFirstChild("_inventory") then rem._inventory:FireServer("Use", itemName) end
+        end
+    end)
 end
 
 local function ConsumeItemSafely(itemName, isFood, customWait)
@@ -334,7 +400,7 @@ local function ConsumeItemSafely(itemName, isFood, customWait)
         if not hum then return end
         pcall(function()
             local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
-            if remCore then local Remotes_m = require(remCore); Remotes_m.Fire("_inventory", "Use", itemName) end
+            if remCore then local Remotes_m = require(remCore); Remotes_m.Fire("_inventory", "Use", itemName) else UseItem(itemName) end
         end)
         local tool = nil
         local t0 = os.clock()
@@ -395,27 +461,543 @@ local function CheckAndAutoEat()
     if (hunger and hunger <= 80) or (brain and brain <= 80) then AutoEatThenDrink(95) end
 end
 
+local function CancelGameFarm()
+    pcall(function()
+        local af = PlayerGui:FindFirstChild("Auto Farm") or PlayerGui:FindFirstChild("AutoFarm")
+        if af then
+            local closeBtn = af:FindFirstChild("Close", true)
+            if closeBtn then ClickGuiButton(closeBtn) end
+            af.Enabled = false
+        end
+    end)
+    pcall(function()
+        local char = LocalPlayer.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum then hum:UnequipTools() end
+    end)
+    task.wait(0.3)
+end
+
+-- [ฟังก์ชันยานพาหนะ]
+local function IsMyVehicle(v)
+    if not v or not v:IsA("Model") or not v.Parent then return false end
+    if MY_SPAWNED_CAR and v == MY_SPAWNED_CAR then return true end
+    local myName = LocalPlayer.Name
+    local myUserId = LocalPlayer.UserId
+    local owner = v:GetAttribute("Owner") or v:GetAttribute("OwnerName") or v:GetAttribute("Player")
+    local ownerId = v:GetAttribute("OwnerId") or v:GetAttribute("UserId") or v:GetAttribute("PlayerId")
+    if owner ~= nil and tostring(owner) ~= "" then
+        if tostring(owner) == myName or tostring(owner) == tostring(myUserId) then return true else return false end
+    end
+    if ownerId ~= nil and tonumber(ownerId) then
+        if tonumber(ownerId) == myUserId then return true else return false end
+    end
+    local ownerVal = v:FindFirstChild("Owner") or v:FindFirstChild("Player")
+    if ownerVal and (ownerVal:IsA("StringValue") or ownerVal:IsA("ObjectValue")) then
+        if ownerVal.Value == myName or ownerVal.Value == LocalPlayer then return true else return false end
+    end
+    return false
+end
+
+local function GetPlayerVehicle()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum and hum.SeatPart and hum.SeatPart:IsA("VehicleSeat") then
+        local veh = hum.SeatPart:FindFirstAncestorOfClass("Model")
+        if veh and IsMyVehicle(veh) then return veh end
+    end
+    if MY_SPAWNED_CAR and MY_SPAWNED_CAR.Parent and MY_SPAWNED_CAR.PrimaryPart and IsMyVehicle(MY_SPAWNED_CAR) then return MY_SPAWNED_CAR end
+    local vehFolder = (workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Vehicles")) or workspace:FindFirstChild("Vehicles")
+    if vehFolder then
+        for _, v in ipairs(vehFolder:GetChildren()) do
+            if v:IsA("Model") and IsMyVehicle(v) and v.PrimaryPart then MY_SPAWNED_CAR = v; return v end
+        end
+    end
+    return nil
+end
+
+local function GetNearbyPlayerVehicle(maxDist)
+    maxDist = maxDist or 80
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil, math.huge, nil end
+    if hum and hum.Sit and hum.SeatPart and hum.SeatPart:IsA("VehicleSeat") then
+        local veh = hum.SeatPart:FindFirstAncestorOfClass("Model")
+        if veh and IsMyVehicle(veh) then return veh, 0, nil end
+    end
+    local vehFolder = (workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Vehicles")) or workspace:FindFirstChild("Vehicles")
+    local nearestCar = nil; local minDist = math.huge
+    if vehFolder then
+        for _, v in ipairs(vehFolder:GetChildren()) do
+            if v:IsA("Model") and IsMyVehicle(v) and v.PrimaryPart then
+                local dist = (v.PrimaryPart.Position - root.Position).Magnitude
+                if dist < minDist then minDist = dist; nearestCar = v end
+            end
+        end
+    end
+    if nearestCar then
+        if minDist <= maxDist then MY_SPAWNED_CAR = nearestCar; return nearestCar, minDist, nil
+        else return nil, minDist, nearestCar end
+    end
+    return nil, math.huge, nil
+end
+
+local function PressFToEnterCar(car)
+    if not car or not car.Parent or not IsMyVehicle(car) then return false end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return false end
+    local seat = car:FindFirstChild("DriveSeat", true) or car:FindFirstChildWhichIsA("VehicleSeat", true) or car:FindFirstChildWhichIsA("Seat", true)
+    if not seat then return false end
+    if hum.Sit and hum.SeatPart == seat then MY_SPAWNED_CAR = car; return true end
+    if hum.Sit and hum.SeatPart ~= seat then hum.Sit = false; task.wait(0.2) end
+    GrantAntiXGrace(20)
+    local drivePrompt = nil
+    local pFolder = seat:FindFirstChild("Prompt")
+    if pFolder and pFolder:FindFirstChild("Prompt") and pFolder.Prompt:IsA("ProximityPrompt") then drivePrompt = pFolder.Prompt
+    else
+        for _, d in ipairs(seat:GetDescendants()) do
+            if d:IsA("ProximityPrompt") and d.ActionText:lower():find("drive") then drivePrompt = d; break end
+        end
+    end
+    if not drivePrompt then
+        for _, d in ipairs(car:GetDescendants()) do
+            if d:IsA("ProximityPrompt") and (d.ActionText:lower():find("drive") or d.Name:lower():find("drive")) then drivePrompt = d; break end
+        end
+    end
+    if drivePrompt then
+        pcall(function() drivePrompt.HoldDuration = 0 end)
+        pcall(function() fireproximityprompt(drivePrompt) end)
+        pcall(function() drivePrompt:InputHoldBegin(); task.wait(0.08); drivePrompt:InputHoldEnd() end)
+    end
+    pcall(function()
+        local vim = game:GetService("VirtualInputManager")
+        vim:SendKeyEvent(true, Enum.KeyCode.F, false, game)
+        task.wait(0.06)
+        vim:SendKeyEvent(false, Enum.KeyCode.F, false, game)
+    end)
+    task.wait(0.2)
+    if not (hum.Sit and hum.SeatPart) then
+        pcall(function() root.CFrame = seat.CFrame + Vector3.new(0, 0.5, 0); seat:Sit(hum) end)
+        task.wait(0.2)
+    end
+    return (hum.Sit and hum.SeatPart ~= nil)
+end
+
+local function EnsurePlayerSeatedInCar(car) return PressFToEnterCar(car) end
+
+local function ExitCarNaturally(car)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return end
+    if hum.Sit then hum.Sit = false; task.wait(0.12) end
+    if car and car.PrimaryPart then
+        local rightVec = car.PrimaryPart.CFrame.RightVector
+        local exitPos = car.PrimaryPart.Position - (rightVec * 4.2)
+        local groundY = GetGroundLevel(exitPos.X, exitPos.Z, car.PrimaryPart.Position.Y)
+        root.CFrame = CFrame.new(exitPos.X, groundY + 1.8, exitPos.Z)
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+    end
+    task.wait(0.15)
+end
+
+local function SmoothWalkTo(targetPos, maxTimeout, shouldContinueCheck, stopDist)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return false end
+    maxTimeout = maxTimeout or 50; stopDist = stopDist or 2.5
+    local startTime = os.clock(); local lastPos = root.Position; local stuckTicks = 0
+    while (root.Position - targetPos).Magnitude > stopDist and (os.clock() - startTime < maxTimeout) do
+        if shouldContinueCheck and not shouldContinueCheck() then return false end
+        GrantAntiXGrace(5)
+        hum:MoveTo(targetPos)
+        if (root.Position - lastPos).Magnitude < 0.4 then
+            stuckTicks = stuckTicks + 1
+            if stuckTicks >= 3 then hum.Jump = true; stuckTicks = 0 end
+        else stuckTicks = 0 end
+        lastPos = root.Position; task.wait(0.15)
+    end
+    return (root.Position - targetPos).Magnitude <= 10
+end
+
+local function DriveCarTo(destination, shouldContinueCheck)
+    local myCar = GetNearbyPlayerVehicle(80)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not myCar or not IsMyVehicle(myCar) then myCar = GetPlayerVehicle() end
+    if not myCar or not hum or not root then return false end
+    local seat = myCar:FindFirstChildWhichIsA("VehicleSeat", true)
+    if not seat then return false end
+    EnsurePlayerSeatedInCar(myCar); task.wait(0.1)
+    local currentPos = seat.Position; local startY = currentPos.Y
+    local initialGround = GetGroundLevel(currentPos.X, currentPos.Z, startY)
+    local naturalRideHeight = math.clamp(startY - initialGround, 2.3, 3.2)
+    local distTotal = (Vector2.new(destination.X, destination.Z) - Vector2.new(currentPos.X, currentPos.Z)).Magnitude
+    if distTotal < 5 then return true end
+    local traveled = 0; local lastTick = os.clock()
+    while traveled < distTotal do
+        if shouldContinueCheck and not shouldContinueCheck() then return false end
+        GrantAntiXGrace(15)
+        if not hum.Sit or hum.SeatPart ~= seat then pcall(function() root.CFrame = seat.CFrame + Vector3.new(0, 0.8, 0); seat:Sit(hum) end) end
+        local currentSpeed = tonumber(VehicleDriveSpeed) or 200; currentSpeed = math.clamp(currentSpeed, 10, 500)
+        local now = os.clock(); local dt = math.min(now - lastTick, 0.1); lastTick = now
+        traveled = math.min(distTotal, traveled + (currentSpeed * dt))
+        local alpha = math.clamp(traveled / distTotal, 0, 1)
+        local targetX = currentPos.X + (destination.X - currentPos.X) * alpha
+        local targetZ = currentPos.Z + (destination.Z - currentPos.Z) * alpha
+        local estY = currentPos.Y + (destination.Y - currentPos.Y) * alpha
+        local groundY = GetGroundLevel(targetX, targetZ, estY)
+        local naturalH = naturalRideHeight or 2.4; local surfaceY = groundY + naturalH
+        local dir = Vector3.new(destination.X - targetX, 0, destination.Z - targetZ)
+        local lookCFrame = CFrame.new(targetX, surfaceY, targetZ)
+        if dir.Magnitude > 0.1 then lookCFrame = CFrame.lookAt(Vector3.new(targetX, surfaceY, targetZ), Vector3.new(targetX, surfaceY, targetZ) + dir) end
+        myCar:PivotTo(lookCFrame); RunService.Heartbeat:Wait()
+    end
+    local endGround = GetGroundLevel(destination.X, destination.Z, destination.Y)
+    local targetEndY = (destination.Y < 5.0 and (destination.Y + naturalRideHeight)) or math.max(endGround + naturalRideHeight, 6.0)
+    myCar:PivotTo(CFrame.new(destination.X, targetEndY, destination.Z)); task.wait(0.1); return true
+end
+
+local function GetNearestCarBooth(fromPos)
+    fromPos = fromPos or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position) or TOWN_CAR_SPAWN
+    local closestPos = nil; local closestDist = math.huge
+    for cropName, data in pairs(TYPER_LOCATIONS) do
+        if data and data.Booth then local d = (data.Booth - fromPos).Magnitude; if d < closestDist then closestDist = d; closestPos = data.Booth end end
+    end
+    return closestPos or TOWN_CAR_SPAWN
+end
+
+local function FindBoothPromptNear(fromPos, maxDist)
+    fromPos = fromPos or (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position)
+    if not fromPos then return nil end
+    maxDist = maxDist or 30
+    local farmSys = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Farm")
+    if farmSys then
+        for _, cropFolder in ipairs(farmSys:GetChildren()) do
+            local promptFolder = cropFolder:FindFirstChild("Prompt")
+            local spawnFolder = promptFolder and promptFolder:FindFirstChild("Spawn")
+            if spawnFolder then
+                local pr = spawnFolder:FindFirstChildWhichIsA("ProximityPrompt", true)
+                if pr then
+                    local p = pr.Parent
+                    local pos = (p:IsA("Attachment") and p.WorldPosition) or (p:IsA("BasePart") and p.Position)
+                    if pos and (pos - fromPos).Magnitude <= maxDist then return pr end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function FindPromptNear(centerPos, maxDist, matchKeyword)
+    maxDist = maxDist or 25
+    local closest, closestDist = nil, maxDist
+    local systems = workspace:FindFirstChild("Systems")
+    local containers = systems and {systems} or {workspace}
+    for _, container in ipairs(containers) do
+        for _, prompt in ipairs(container:GetDescendants()) do
+            if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                local pPart = prompt.Parent
+                local pPos = pPart and (pPart:IsA("BasePart") and pPart.Position or (pPart:IsA("Attachment") and pPart.WorldPosition))
+                if pPos then
+                    local d = (pPos - centerPos).Magnitude
+                    if d <= closestDist then
+                        if not matchKeyword or string.find(string.lower(prompt.ActionText or ""), string.lower(matchKeyword)) then closest = prompt; closestDist = d end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function ClickGuiButton(btn)
+    if not btn then return end
+    pcall(function()
+        if getconnections then for _, con in ipairs(getconnections(btn.MouseButton1Click)) do pcall(function() if con.Function then con.Function() end end) end end
+        if firesignal then pcall(function() firesignal(btn.MouseButton1Click) end) end
+    end)
+end
+
+local function SafeClickGuiButton(btn)
+    if not btn or not btn:IsA("GuiButton") then return end
+    pcall(function() if firesignal then pcall(function() firesignal(btn.MouseButton1Click) end) end end)
+end
+
+local function TriggerPrompt(prompt)
+    if not prompt or not prompt.Enabled then return end
+    pcall(function()
+        if fireproximityprompt then pcall(function() fireproximityprompt(prompt) end) end
+        pcall(function()
+            prompt:InputHoldBegin()
+            task.wait(prompt.HoldDuration > 0 and (prompt.HoldDuration + 0.05) or 0.1)
+            prompt:InputHoldEnd()
+        end)
+    end)
+end
+--// ============================================================
+--//  RELWX HUB x NEXUS TYPER TOWN | FULL VERSION | PART 3/4
+--// ============================================================
+
+local function GetSpawnPointForBooth(boothPos)
+    local bestPt = nil; local bestDist = math.huge
+    local farmSys = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Farm")
+    if farmSys then
+        for _, farm in ipairs(farmSys:GetChildren()) do
+            local sp = farm:FindFirstChild("Prompt") and farm.Prompt:FindFirstChild("Spawn")
+            local ptFolder = sp and sp:FindFirstChild("Point")
+            if ptFolder then
+                for _, pt in ipairs(ptFolder:GetChildren()) do
+                    if pt:IsA("BasePart") then local d = (pt.Position - boothPos).Magnitude; if d < bestDist then bestDist = d; bestPt = pt end end
+                end
+            end
+        end
+    end
+    return bestPt
+end
+
+local function StoreCarAtBooth(boothPos)
+    GrantAntiXGrace(35)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local myCar = GetPlayerVehicle()
+    if not myCar then return end
+    local carName = myCar.Name or "Buggy"
+    local spPt = GetSpawnPointForBooth(boothPos)
+    if myCar.PrimaryPart then
+        if spPt and spPt:IsA("BasePart") then myCar:PivotTo(spPt.CFrame + Vector3.new(0, 1.2, 0))
+        else local groundY = GetGroundLevel(boothPos.X, boothPos.Z, boothPos.Y); myCar:PivotTo(CFrame.new(boothPos.X, groundY + 1.2, boothPos.Z)) end
+        myCar.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
+        myCar.PrimaryPart.AssemblyAngularVelocity = Vector3.zero
+    end
+    task.wait(2.0); ExitCarNaturally(myCar)
+    if root and (root.Position - boothPos).Magnitude > 8 then SmoothWalkTo(boothPos, 3, nil, 5.0) end
+    local boothPrompt = FindBoothPromptNear(boothPos, 40)
+    if boothPrompt then boothPrompt.Enabled = true; TriggerPrompt(boothPrompt) end
+    local cs = PlayerGui:WaitForChild("Car_Spawn", 1.5)
+    local t0 = os.clock()
+    while (not cs or not cs:FindFirstChild("Group") or not cs.Group.Visible) and (os.clock() - t0 < 1.2) do
+        if boothPrompt then TriggerPrompt(boothPrompt) end; task.wait(0.15)
+    end
+    if cs and cs:FindFirstChild("Group") and cs.Group.Visible then
+        local btn = cs.Group:FindFirstChild("Pound", true)
+        if btn and btn:IsA("GuiButton") then ClickGuiButton(btn) end
+    end
+    pcall(function()
+        local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
+        if remCore then local Remotes_m = require(remCore); Remotes_m.Fire("_carspawn", "Despawn", carName); MY_SPAWNED_CAR = nil end
+    end)
+end
+
+local function SpawnCarAtBooth(boothPos)
+    GrantAntiXGrace(40)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not hum or not root then return nil end
+    if boothPos then
+        local distToBooth = (root.Position - boothPos).Magnitude
+        if distToBooth > 15 then
+            local groundY = GetGroundLevel(boothPos.X, boothPos.Z, boothPos.Y)
+            root.CFrame = CFrame.new(boothPos.X, groundY + 1.2, boothPos.Z)
+            root.AssemblyLinearVelocity = Vector3.zero; root.AssemblyAngularVelocity = Vector3.zero; task.wait(0.2)
+        else root.CFrame = CFrame.lookAt(root.Position, Vector3.new(boothPos.X, root.Position.Y, boothPos.Z)) end
+    end
+    local boothPrompt = FindBoothPromptNear(root.Position, 30) or (boothPos and FindBoothPromptNear(boothPos, 30))
+    if boothPrompt then boothPrompt.Enabled = true; TriggerPrompt(boothPrompt) end
+    local cs = PlayerGui:FindFirstChild("Car_Spawn")
+    local group = cs and cs:FindFirstChild("Group")
+    local tOpen = os.clock()
+    while os.clock() - tOpen < 3.0 do
+        if group and group.Visible then break end
+        if boothPrompt then TriggerPrompt(boothPrompt) end
+        task.wait(0.1)
+        cs = PlayerGui:FindFirstChild("Car_Spawn"); group = cs and cs:FindFirstChild("Group")
+    end
+    if group and group.Visible then
+        local spawnBtn = group:FindFirstChild("Spawn", true) or group:FindFirstChild("Buggy", true)
+        if spawnBtn and spawnBtn:IsA("GuiButton") then ClickGuiButton(spawnBtn) end
+        task.wait(1.0)
+        local finalCar = GetNearbyPlayerVehicle(80) or GetPlayerVehicle()
+        if finalCar then MY_SPAWNED_CAR = finalCar; EnsurePlayerSeatedInCar(finalCar); if cs and cs:FindFirstChild("Group") then cs.Group.Visible = false end; return finalCar end
+    end
+    return nil
+end
+
+local function WarpToTownAndSpawnCar()
+    GrantAntiXGrace(45)
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    if hum and hum.Sit then hum.Sit = false; task.wait(0.15) end
+    local groundY = GetGroundLevel(TOWN_CAR_SPAWN.X, TOWN_CAR_SPAWN.Z, TOWN_CAR_SPAWN.Y)
+    root.CFrame = CFrame.new(Vector3.new(TOWN_CAR_SPAWN.X, groundY + 1.2, TOWN_CAR_SPAWN.Z))
+    root.AssemblyLinearVelocity = Vector3.zero; root.AssemblyAngularVelocity = Vector3.zero; task.wait(0.4)
+    local car = SpawnCarAtBooth(TOWN_CAR_SPAWN)
+    if car then EnsurePlayerSeatedInCar(car) end
+    return car
+end
+
+local function EnsureCarAvailable(boothPos)
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local targetBooth = boothPos or (root and GetNearestCarBooth(root.Position)) or TOWN_CAR_SPAWN
+    local nearbyCar = GetNearbyPlayerVehicle(80)
+    if nearbyCar and nearbyCar.PrimaryPart and IsMyVehicle(nearbyCar) then EnsurePlayerSeatedInCar(nearbyCar); return nearbyCar end
+    local car = SpawnCarAtBooth(targetBooth)
+    if car and IsMyVehicle(car) then EnsurePlayerSeatedInCar(car) end
+    return car
+end
+
+local function GetExactFarmPromptPosition(cropName)
+    local locData = TYPER_LOCATIONS[cropName]
+    local fallbackPos = locData and locData.Farm
+    local farmSys = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Farm")
+    local farmFolder = farmSys and farmSys:FindFirstChild(cropName)
+    if farmFolder then
+        for _, desc in ipairs(farmFolder:GetDescendants()) do
+            if desc:IsA("ProximityPrompt") and desc.Enabled then
+                local prParent = desc.Parent
+                local pPos = (prParent:IsA("Attachment") and prParent.WorldPosition) or (prParent:IsA("BasePart") and prParent.Position)
+                if pPos then return pPos end
+            end
+        end
+    end
+    return fallbackPos
+end
+
+local function GetHumanLikeFarmStandingSpot(centerPos)
+    local farmRadius = 3.8
+    local occupiedAngles = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = plr.Character.HumanoidRootPart
+            local d = (Vector3.new(hrp.Position.X, 0, hrp.Position.Z) - Vector3.new(centerPos.X, 0, centerPos.Z)).Magnitude
+            if d <= 10 then table.insert(occupiedAngles, math.atan2(hrp.Position.Z - centerPos.Z, hrp.Position.X - centerPos.X)) end
+        end
+    end
+    local bestAngle = nil; local maxMinDist = -1
+    for i = 0, 15 do
+        local testAngle = (i / 16) * math.pi * 2
+        local minDiff = math.pi
+        for _, occAngle in ipairs(occupiedAngles) do
+            local diff = math.abs(testAngle - occAngle); if diff > math.pi then diff = (math.pi * 2) - diff end
+            if diff < minDiff then minDiff = diff end
+        end
+        if minDiff > maxMinDist then maxMinDist = minDiff; bestAngle = testAngle end
+    end
+    if not bestAngle then bestAngle = math.random() * math.pi * 2 end
+    local standX = centerPos.X + math.cos(bestAngle) * farmRadius
+    local standZ = centerPos.Z + math.sin(bestAngle) * farmRadius
+    local groundY = GetGroundLevel(standX, standZ, centerPos.Y)
+    return Vector3.new(standX, groundY + 2.2, standZ), bestAngle
+end
+
+local function TriggerFarmPromptDirectly(cropName)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    local farmSys = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Farm")
+    local farmFolder = farmSys and farmSys:FindFirstChild(cropName)
+    local targetPrompt = nil
+    if farmFolder then
+        for _, desc in ipairs(farmFolder:GetDescendants()) do
+            if desc:IsA("ProximityPrompt") and desc.Enabled then targetPrompt = desc; break end
+        end
+    end
+    if not targetPrompt and farmSys then
+        for _, prompt in ipairs(farmSys:GetDescendants()) do
+            if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                local prParent = prompt.Parent
+                local pPos = (prParent:IsA("Attachment") and prParent.WorldPosition) or (prParent:IsA("BasePart") and prParent.Position)
+                if pPos and (pPos - root.Position).Magnitude <= 20 then
+                    local action = (prompt.ActionText or ""):lower()
+                    if not action:find("spawn") and not action:find("car") then targetPrompt = prompt; break end
+                end
+            end
+        end
+    end
+    if targetPrompt then
+        local holdTime = math.max((targetPrompt.HoldDuration or 0.1), 0.15) + 0.12
+        pcall(function() targetPrompt:InputHoldBegin() end); task.wait(holdTime); pcall(function() targetPrompt:InputHoldEnd() end)
+        return true
+    end
+    return false
+end
+
+local function HarvestSingleCrop(cropName, targetAmount, shouldContinueCheck)
+    targetAmount = 60
+    local curCount = GetPlayerInventoryCount(cropName)
+    if curCount >= targetAmount then return end
+    local locData = TYPER_LOCATIONS[cropName]
+    if not locData then return end
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+    local myCar = GetNearbyPlayerVehicle(80)
+    if not myCar or not hum.Sit then
+        if myCar then EnsurePlayerSeatedInCar(myCar) else myCar = EnsureCarAvailable(locData and locData.Booth) end
+    end
+    local farmPos = locData.Farm
+    local exactCenter = GetExactFarmPromptPosition(cropName) or farmPos
+    local farmParkingPos = Vector3.new(exactCenter.X + 4.5, GetGroundLevel(exactCenter.X + 4.5, exactCenter.Z + 4.5, exactCenter.Y), exactCenter.Z + 4.5)
+    DriveCarTo(farmParkingPos, shouldContinueCheck); task.wait(2.0)
+    ExitCarNaturally(myCar); task.wait(0.3)
+    local standPos, bestAngle = GetHumanLikeFarmStandingSpot(exactCenter)
+    SmoothWalkTo(standPos, 6, shouldContinueCheck, 1.2); task.wait(0.2)
+    if root then
+        local finalGround = GetGroundLevel(standPos.X, standPos.Z, exactCenter.Y)
+        root.CFrame = CFrame.lookAt(Vector3.new(standPos.X, finalGround + 2.2, standPos.Z), Vector3.new(exactCenter.X, finalGround + 2.2, exactCenter.Z))
+        root.AssemblyLinearVelocity = Vector3.zero; root.AssemblyAngularVelocity = Vector3.zero
+    end
+    task.wait(1.5)
+    TriggerFarmPromptDirectly(cropName); task.wait(1.5)
+    local isFarming = false
+    local afGui = PlayerGui:FindFirstChild("Auto Farm") or PlayerGui:FindFirstChild("AutoFarm")
+    if afGui and ((afGui:FindFirstChild("Group") and afGui.Group.Visible) or afGui.Enabled) then isFarming = true end
+    if not isFarming and GetPlayerInventoryCount(cropName) == curCount then task.wait(0.5); TriggerFarmPromptDirectly(cropName); task.wait(1.5) end
+    local farmTimeout = os.clock()
+    while curCount < targetAmount do
+        if isAutoEatAndDrinkEnabled and not isConsumingItem then
+            local h = GetPlayerHunger(); local e = GetPlayerEnergy()
+            if (h and h <= 75) or (e and e <= 75) then
+                CancelGameFarm(); task.wait(0.3)
+                if h and h <= 75 then CheckAndAutoEat() end
+                if e and e <= 75 then CheckAndAutoEat() end
+                task.wait(0.3); TriggerFarmPromptDirectly(cropName); task.wait(1.2); farmTimeout = os.clock()
+            end
+        end
+        if shouldContinueCheck and not shouldContinueCheck() then break end
+        if os.clock() - farmTimeout > 180 then break end
+        GrantAntiXGrace(15)
+        local newCount = GetPlayerInventoryCount(cropName)
+        if newCount > curCount then curCount = newCount; farmTimeout = os.clock()
+        elseif (os.clock() - farmTimeout > 15) and (newCount == curCount) then TriggerFarmPromptDirectly(cropName); farmTimeout = os.clock() end
+        task.wait(0.5)
+    end
+    local targetBooth = (locData and locData.Booth) or GetNearestCarBooth(root.Position)
+    if targetBooth then SmoothWalkTo(targetBooth, 45, shouldContinueCheck, 5.5); task.wait(0.3) end
+    local car = SpawnCarAtBooth(targetBooth)
+    if not car then car = EnsureCarAvailable(targetBooth) end
+    if car then EnsurePlayerSeatedInCar(car) end
+    task.wait(0.3)
+end
+
+-- [ฟังก์ชันคราฟ]
 local function GetCraft3Prompt()
     local craftSys = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Crafting")
     local c3 = craftSys and craftSys:FindFirstChild("Craft_3")
     if c3 then
         local p = c3:FindFirstChildWhichIsA("ProximityPrompt", true)
         if p and p.Enabled then return p end
-        if c3:FindFirstChild("Prompt") then
-            local pp = c3.Prompt:FindFirstChildWhichIsA("ProximityPrompt") or (c3.Prompt:IsA("ProximityPrompt") and c3.Prompt)
-            if pp and pp.Enabled then return pp end
-        end
-    end
-    if craftSys then
-        for _, desc in ipairs(craftSys:GetDescendants()) do
-            if desc:IsA("ProximityPrompt") and desc.Enabled then
-                local p = desc.Parent
-                while p and p ~= workspace do
-                    if p.Name == "Craft_3" then return desc end
-                    p = p.Parent
-                end
-            end
-        end
     end
     return nil
 end
@@ -426,66 +1008,26 @@ local function CraftFoodAtStation(recipeName, shouldContinueCheck)
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
-
-    -- ตรวจสอบและขึ้นรถเสมอเพื่อขับไปโต๊ะคราฟท์
     local myCar = GetPlayerVehicle()
-    if not myCar or not hum.Sit then
-        myCar = EnsureCarAvailable()
-    end
-    if myCar then
-        EnsurePlayerSeatedInCar(myCar)
-    end
-
-    -- 1. ปิด UI ที่อาจค้างอยู่
+    if not myCar or not hum.Sit then myCar = EnsureCarAvailable() end
+    if myCar then EnsurePlayerSeatedInCar(myCar) end
     pcall(function()
-        local procGui = PlayerGui:FindFirstChild("Process")
-        if procGui and procGui:FindFirstChild("Group") then procGui.Group.Visible = false end
-        local ecoGui = PlayerGui:FindFirstChild("Economy")
-        if ecoGui and ecoGui:FindFirstChild("Group") then ecoGui.Group.Visible = false end
+        local procGui = PlayerGui:FindFirstChild("Process"); if procGui and procGui:FindFirstChild("Group") then procGui.Group.Visible = false end
+        local ecoGui = PlayerGui:FindFirstChild("Economy"); if ecoGui and ecoGui:FindFirstChild("Group") then ecoGui.Group.Visible = false end
     end)
-
-    -- 2. หาตำแหน่งที่แน่นอนของโต๊ะคราฟอาหาร Craft_3
     local cPrompt = GetCraft3Prompt()
     local exactCraftPos = nil
     if cPrompt then
         local pParent = cPrompt.Parent
-        exactCraftPos = (pParent:IsA("BasePart") and pParent.Position)
-                     or (pParent:IsA("Attachment") and pParent.WorldPosition)
-                     or (pParent.Parent and pParent.Parent:IsA("BasePart") and pParent.Parent.Position)
-    end
-    if not exactCraftPos then
-        local craftSys = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Crafting")
-        local c3 = craftSys and craftSys:FindFirstChild("Craft_3")
-        if c3 then
-            local anyPart = c3:FindFirstChildWhichIsA("BasePart", true)
-            if anyPart then exactCraftPos = anyPart.Position end
-        end
+        exactCraftPos = (pParent:IsA("BasePart") and pParent.Position) or (pParent:IsA("Attachment") and pParent.WorldPosition)
     end
     exactCraftPos = exactCraftPos or foodData.Crafting
-
-    -- 3. ขับรถไปจอดหน้าโต๊ะคราฟอาหาร Craft_3
-    DriveCarTo(exactCraftPos + Vector3.new(0, 0, 5.0), shouldContinueCheck)
-    task.wait(0.2)
-    if shouldContinueCheck and not shouldContinueCheck() then return end
-
-    -- 4. ลงจากรถและยืนหน้าโต๊ะคราฟ
-    if hum.Sit then
-        hum.Sit = false
-        task.wait(0.2)
-    end
-
+    DriveCarTo(exactCraftPos + Vector3.new(0, 0, 5.0), shouldContinueCheck); task.wait(0.2)
+    if hum.Sit then hum.Sit = false; task.wait(0.2) end
     local groundY = GetGroundLevel(exactCraftPos.X, exactCraftPos.Z, exactCraftPos.Y)
-    local standPos = Vector3.new(exactCraftPos.X, groundY + 3.0, exactCraftPos.Z + 2.5)
-    root.CFrame = CFrame.lookAt(standPos, exactCraftPos)
+    root.CFrame = CFrame.lookAt(Vector3.new(exactCraftPos.X, groundY + 3.0, exactCraftPos.Z + 2.5), exactCraftPos)
     task.wait(0.15)
-
-    -- 5. กด ProximityPrompt เฉพาะของโต๊ะ Craft_3 เท่านั้น
-    cPrompt = cPrompt or GetCraft3Prompt()
-    if cPrompt then
-        TriggerPrompt(cPrompt)
-    end
-
-    -- 6. รอ UI Crafting เปิดขึ้นมา
+    if cPrompt then TriggerPrompt(cPrompt) end
     local cg = PlayerGui:WaitForChild("Crafting", 4)
     local tWaitUI = os.clock()
     while os.clock() - tWaitUI < 3.0 do
@@ -493,218 +1035,45 @@ local function CraftFoodAtStation(recipeName, shouldContinueCheck)
         if cPrompt then TriggerPrompt(cPrompt) end
         task.wait(0.3)
     end
-
-    if not cg or not cg:FindFirstChild("Group") or not cg.Group.Visible then
-        pcall(function()
-            if cg and cg:FindFirstChild("Group") then
-                cg.Group.Visible = true
-                cg.Group.GroupTransparency = 0
-            end
-        end)
-    end
-    task.wait(0.2)
-
-    -- 7. คำนวณจำนวนที่คราฟได้จริง
     local function GetMaxCraftAmount()
-        local b = GetPlayerInventoryCount("Bread")
-        local c = GetPlayerInventoryCount("Catchup")
-        local p = GetPlayerInventoryCount("Pig")
-        local m = GetPlayerInventoryCount("Mango")
-        local r = GetPlayerInventoryCount("Rice")
-        if recipeName == "Sandwish" then
-            return math.min(math.floor(b / 3), math.floor(c / 2), math.floor(p / 2))
-        elseif recipeName == "MangoRice" then
-            return math.min(math.floor(m / 2), math.floor(r / 3))
-        elseif recipeName == "RiceKapaoMoo" then
-            return math.min(math.floor(p / 2), math.floor(r / 3))
-        elseif recipeName == "KangSom" then
-            local tom = GetPlayerInventoryCount("Tomato")
-            local cr = GetPlayerInventoryCount("Crab")
-            return math.min(math.floor(tom / 2), math.floor(cr / 2))
-        end
+        local b, c, p, m, r = GetPlayerInventoryCount("Bread"), GetPlayerInventoryCount("Catchup"), GetPlayerInventoryCount("Pig"), GetPlayerInventoryCount("Mango"), GetPlayerInventoryCount("Rice")
+        if recipeName == "Sandwish" then return math.min(math.floor(b/3), math.floor(c/2), math.floor(p/2)) end
+        if recipeName == "MangoRice" then return math.min(math.floor(m/2), math.floor(r/3)) end
+        if recipeName == "RiceKapaoMoo" then return math.min(math.floor(p/2), math.floor(r/3)) end
         return 1
     end
-
     local toCraft = GetMaxCraftAmount()
-    if toCraft <= 0 then
+    if toCraft > 0 then
+        local mainFrame = cg and cg:FindFirstChild("Group") and cg.Group:FindFirstChild("Main")
+        if mainFrame then
+            local scroller = mainFrame:FindFirstChild("Left_Tab") and mainFrame.Left_Tab:FindFirstChild("ScrollingFrame")
+            if scroller then
+                local sandCatBtn = scroller:FindFirstChild("Sand") or scroller:FindFirstChild("Food")
+                if sandCatBtn then SafeClickGuiButton(sandCatBtn); task.wait(0.2) end
+                local recipeBtn = scroller:FindFirstChild(recipeName) or mainFrame:FindFirstChild(recipeName, true)
+                if recipeBtn then SafeClickGuiButton(recipeBtn); task.wait(0.2) end
+            end
+            local amtBox = mainFrame:FindFirstChild("Function") and mainFrame.Function:FindFirstChild("Amount") and mainFrame.Function.Amount:FindFirstChild("Amount")
+            if amtBox and amtBox:IsA("TextBox") then amtBox.Text = tostring(toCraft); task.wait(0.1) end
+            local craftBtn = mainFrame:FindFirstChild("Button") and mainFrame.Button:FindFirstChild("Craft")
+            if craftBtn then SafeClickGuiButton(craftBtn) end
+        end
         pcall(function()
-            if cg and cg:FindFirstChild("Group") then cg.Group.Visible = false end
+            local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
+            if remCore then local Remotes_m = require(remCore); Remotes_m.Fire("_crafting", "Request", "Craft_3", recipeName, toCraft, false) end
         end)
-        local myCar2 = GetNearbyPlayerVehicle(80) or EnsureCarAvailable(TOWN_CAR_SPAWN)
-        if myCar2 then EnsurePlayerSeatedInCar(myCar2) end
-        return
+        local tStart = os.clock()
+        while (os.clock() - tStart < 10.0) do if shouldContinueCheck and not shouldContinueCheck() then break end; task.wait(0.5) end
+        pcall(function()
+            local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
+            if remCore then local Remotes_m = require(remCore); Remotes_m.Fire("_crafting", "Complete", "Craft_3", recipeName, toCraft, false) end
+        end)
     end
-
-    -- 8. เลือกหมวดหมู่ Sand (อาหาร) และเลือกเมนูใน UI Crafting
-    local mainFrame = cg and cg:FindFirstChild("Group") and cg.Group:FindFirstChild("Main")
-    if mainFrame then
-        local scroller = mainFrame:FindFirstChild("Left_Tab") and mainFrame.Left_Tab:FindFirstChild("ScrollingFrame")
-        if scroller then
-            local sandCatBtn = scroller:FindFirstChild("Sand") or scroller:FindFirstChild("Food") or scroller:FindFirstChild("อาหาร")
-            if sandCatBtn then
-                SafeClickGuiButton(sandCatBtn)
-                task.wait(0.2)
-            end
-
-            local recipeBtn = scroller:FindFirstChild(recipeName) or mainFrame:FindFirstChild(recipeName, true)
-            if recipeBtn then
-                local clickTarget = (recipeBtn:IsA("GuiButton") and recipeBtn) or recipeBtn:FindFirstChildWhichIsA("GuiButton", true) or recipeBtn
-                if clickTarget and clickTarget:IsA("GuiButton") then
-                    SafeClickGuiButton(clickTarget)
-                end
-                task.wait(0.2)
-            end
-        end
-
-        -- ใส่จำนวนลงใน Amount Box
-        local amtBox = mainFrame:FindFirstChild("Function") and mainFrame.Function:FindFirstChild("Amount") and mainFrame.Function.Amount:FindFirstChild("Amount")
-        if amtBox and amtBox:IsA("TextBox") then
-            amtBox.Text = tostring(toCraft)
-            task.wait(0.1)
-        end
-
-        -- กดปุ่ม Craft บน UI
-        local craftBtn = mainFrame:FindFirstChild("Button") and mainFrame.Button:FindFirstChild("Craft")
-        if craftBtn and craftBtn:IsA("GuiButton") then
-            SafeClickGuiButton(craftBtn)
-        end
-    end
-
-    -- 9. ยิง Remote Request เพื่อสั่งคราฟกับเซิร์ฟเวอร์โดยตรง
-    pcall(function()
-        local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
-        if remCore then
-            local Remotes_m = require(remCore)
-            Remotes_m.Fire("_crafting", "Request", "Craft_3", recipeName, toCraft, false)
-        else
-            local rem = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Remotes")
-            if rem and rem:FindFirstChild("_crafting") then
-                rem._crafting:FireServer("Request", "Craft_3", recipeName, toCraft, false)
-            end
-        end
-    end)
-
-    -- รอระยะเวลาคราฟ 10.5 วินาที
-    local tStart = os.clock()
-    while (os.clock() - tStart < 10.0) do
-        if shouldContinueCheck and not shouldContinueCheck() then break end
-        GrantAntiXGrace(15)
-        task.wait(0.5)
-    end
-    task.wait(0.2)
-
-    -- 10. ยิง Remote Complete เพื่อรับไอเทมอาหารสำเร็จ
-    pcall(function()
-        local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
-        if remCore then
-            local Remotes_m = require(remCore)
-            Remotes_m.Fire("_crafting", "Complete", "Craft_3", recipeName, toCraft, false)
-        else
-            local rem = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Remotes")
-            if rem and rem:FindFirstChild("_crafting") then
-                rem._crafting:FireServer("Complete", "Craft_3", recipeName, toCraft, false)
-            end
-        end
-    end)
     task.wait(0.3)
-
-    -- 11. ปิดหน้าต่าง UI คราฟ
-    pcall(function()
-        if mainFrame and mainFrame:FindFirstChild("Exit") then
-            if firesignal then firesignal(mainFrame.Exit.MouseButton1Click) end
-        end
-        if cg and cg:FindFirstChild("Group") then
-            cg.Group.Visible = false
-        end
-    end)
-    task.wait(0.2)
-
-    -- รอ 3 วินาทีแล้วขึ้นรถไปขาย
+    pcall(function() if cg and cg:FindFirstChild("Group") then cg.Group.Visible = false end end)
     task.wait(3.0)
-
-    local myCar3 = GetNearbyPlayerVehicle(80) or EnsureCarAvailable(TOWN_CAR_SPAWN)
-    if myCar3 then
-        EnsurePlayerSeatedInCar(myCar3)
-    end
-    task.wait(0.3)
-end
-
-local function ProcessBananaAtStation(shouldContinueCheck)
-    local foodData = TYPER_LOCATIONS.Food
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum then return end
-
-    local myCar = GetPlayerVehicle()
-    if not myCar or not hum.Sit then
-        myCar = EnsureCarAvailable()
-    end
-    if myCar then
-        EnsurePlayerSeatedInCar(myCar)
-    end
-
-    local pBan = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Process") and workspace.Systems.Process:FindFirstChild("Banana")
-    local pPrompt = pBan and pBan:FindFirstChild("Prompt")
-    local bPos = nil
-    if pPrompt then
-        bPos = (pPrompt:IsA("Attachment") and pPrompt.WorldPosition) or (pPrompt:IsA("BasePart") and pPrompt.Position) or (pPrompt:FindFirstChildWhichIsA("BasePart") and pPrompt:FindFirstChildWhichIsA("BasePart").Position)
-    end
-    if not bPos and pBan then
-        local anyPart = pBan:FindFirstChildWhichIsA("BasePart", true)
-        if anyPart then bPos = anyPart.Position end
-    end
-    local exactBanPos = bPos or foodData.BananaProcess
-
-    DriveCarTo(exactBanPos + Vector3.new(0, 0, 5.0), shouldContinueCheck)
-    task.wait(0.1)
-    if shouldContinueCheck and not shouldContinueCheck() then return end
-
-    if hum.Sit then
-        hum.Sit = false
-        task.wait(0.1)
-    end
-
-    local standPos = exactBanPos + Vector3.new(0, 0, 2.5)
-    local groundY = GetGroundLevel(standPos.X, standPos.Z, standPos.Y)
-    root.CFrame = CFrame.lookAt(Vector3.new(standPos.X, groundY + 3.0, standPos.Z), exactBanPos)
-    task.wait(0.1)
-
-    local procPrompt = pBan and pBan:FindFirstChildWhichIsA("ProximityPrompt", true)
-    if not procPrompt then
-        procPrompt = FindPromptNear(root.Position, 15, nil)
-    end
-    if procPrompt then
-        TriggerPrompt(procPrompt)
-    end
-    task.wait(0.3)
-
-    local tProc = os.clock()
-    while (GetPlayerInventoryCount("Banana") >= 2) and (os.clock() - tProc < 120) do
-        if shouldContinueCheck and not shouldContinueCheck() then break end
-        GrantAntiXGrace(15)
-        task.wait(3.2)
-    end
-
-    pcall(function()
-        local procGui = PlayerGui:FindFirstChild("Process")
-        if procGui and procGui:FindFirstChild("Group") then
-            local mainFrame = procGui.Group:FindFirstChild("Main")
-            if mainFrame and mainFrame:FindFirstChild("Exit") and firesignal then
-                firesignal(mainFrame.Exit.MouseButton1Click)
-            end
-            procGui.Group.Visible = false
-        end
-    end)
-    task.wait(0.2)
-
-    task.wait(3.0)
-
     local myCar2 = GetNearbyPlayerVehicle(80) or EnsureCarAvailable(TOWN_CAR_SPAWN)
-    if myCar2 then
-        EnsurePlayerSeatedInCar(myCar2)
-    end
-    task.wait(0.3)
+    if myCar2 then EnsurePlayerSeatedInCar(myCar2) end
 end
 
 local function ProcessOreAtStation(oreName, requiredMin, shouldContinueCheck)
@@ -712,146 +1081,113 @@ local function ProcessOreAtStation(oreName, requiredMin, shouldContinueCheck)
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
-
     local locData = TYPER_LOCATIONS[oreName]
     local exactProcPos = (locData and locData.Process) or Vector3.new(-935.29, 6.93, 6786.66)
-
     local myCar = GetPlayerVehicle()
-    if not myCar or not hum.Sit then
-        myCar = EnsureCarAvailable()
-    end
-    if myCar then
-        EnsurePlayerSeatedInCar(myCar)
-    end
-
-    DriveCarTo(exactProcPos + Vector3.new(0, 0, 5.0), shouldContinueCheck)
-    task.wait(0.1)
-    if shouldContinueCheck and not shouldContinueCheck() then return end
-
-    if hum.Sit then
-        hum.Sit = false
-        task.wait(0.1)
-    end
-
-    local standPos = exactProcPos + Vector3.new(0, 0, 2.5)
-    local groundY = GetGroundLevel(standPos.X, standPos.Z, standPos.Y)
-    root.CFrame = CFrame.lookAt(Vector3.new(standPos.X, groundY + 3.0, standPos.Z), exactProcPos)
-    task.wait(0.1)
-
+    if not myCar or not hum.Sit then myCar = EnsureCarAvailable() end
+    if myCar then EnsurePlayerSeatedInCar(myCar) end
+    DriveCarTo(exactProcPos + Vector3.new(0, 0, 5.0), shouldContinueCheck); task.wait(0.1)
+    if hum.Sit then hum.Sit = false; task.wait(0.1) end
+    local groundY = GetGroundLevel(exactProcPos.X, exactProcPos.Z, exactProcPos.Y)
+    root.CFrame = CFrame.lookAt(Vector3.new(exactProcPos.X, groundY + 3.0, exactProcPos.Z + 2.5), exactProcPos); task.wait(0.1)
     local pFolder = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Process") and workspace.Systems.Process:FindFirstChild(oreName)
     local procPrompt = pFolder and pFolder:FindFirstChildWhichIsA("ProximityPrompt", true)
-    if not procPrompt then
-        procPrompt = FindPromptNear(root.Position, 20, nil)
-    end
-    if procPrompt then
-        TriggerPrompt(procPrompt)
-    end
-    task.wait(0.3)
-
-    -- กดเริ่ม Process ผ่าน Remote และ ActionBtn
+    if procPrompt then TriggerPrompt(procPrompt) end; task.wait(0.3)
     pcall(function()
         local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
-        if remCore then
-            local Remotes_m = require(remCore)
-            Remotes_m.Fire("_process", "Start", oreName)
-        end
+        if remCore then local Remotes_m = require(remCore); Remotes_m.Fire("_process", "Start", oreName) end
     end)
-
     pcall(function()
         local procGui = PlayerGui:FindFirstChild("Process")
         if procGui and procGui:FindFirstChild("Group") then
             local mainFrame = procGui.Group:FindFirstChild("Main")
             local actionBtn = mainFrame and mainFrame:FindFirstChild("ActionBtn")
-            if actionBtn and firesignal then
-                firesignal(actionBtn.MouseButton1Click)
-            end
+            if actionBtn and firesignal then firesignal(actionBtn.MouseButton1Click) end
         end
     end)
-
     requiredMin = requiredMin or (oreName == "Svibranium" and 4 or 2)
     local tProc = os.clock()
     while (GetPlayerInventoryCount(oreName) >= requiredMin) and (os.clock() - tProc < 180) do
-        if shouldContinueCheck and not shouldContinueCheck() then break end
-        GrantAntiXGrace(15)
-        task.wait(3.2)
+        if shouldContinueCheck and not shouldContinueCheck() then break end; task.wait(3.2)
     end
-
-    -- ปิดการแปรรูป
     pcall(function()
         local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
-        if remCore then
-            local Remotes_m = require(remCore)
-            Remotes_m.Fire("_process", "Stop")
-        end
+        if remCore then local Remotes_m = require(remCore); Remotes_m.Fire("_process", "Stop") end
     end)
-
-    pcall(function()
-        local procGui = PlayerGui:FindFirstChild("Process")
-        if procGui and procGui:FindFirstChild("Group") then
-            local mainFrame = procGui.Group:FindFirstChild("Main")
-            if mainFrame and mainFrame:FindFirstChild("Exit") and firesignal then
-                firesignal(mainFrame.Exit.MouseButton1Click)
-            end
-            procGui.Group.Visible = false
-        end
-    end)
-    task.wait(0.2)
-
     task.wait(3.0)
-
     local myCar2 = GetNearbyPlayerVehicle(80) or EnsureCarAvailable(Vector3.new(-876.62, 10.52, 6662.98))
-    if myCar2 then
-        EnsurePlayerSeatedInCar(myCar2)
-    end
-    task.wait(0.3)
+    if myCar2 then EnsurePlayerSeatedInCar(myCar2) end
 end
-
-local VAULT_COORDS = Vector3.new(-1.98, 26.54, 8632.61)
 
 local function DepositAllToVault(shouldContinueCheck)
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
-
+    local VAULT_COORDS = Vector3.new(-1.98, 26.54, 8632.61)
     local myCar = GetPlayerVehicle()
-    if not myCar or not hum.Sit then
-        EnsureCarAvailable()
-    end
-
-    DriveCarTo(VAULT_COORDS + Vector3.new(0, 0, 8.0), shouldContinueCheck)
-    task.wait(0.2)
-    if shouldContinueCheck and not shouldContinueCheck() then return end
-
-    local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
-    if remCore then
-        local Remotes_m = require(remCore)
-        local pData = LocalPlayer:FindFirstChild("PlayerData")
-        if pData then
-            for attrName, _ in pairs(pData:GetAttributes()) do
-                local count = GetPlayerInventoryCount(attrName)
-                if count > 0 then
-                    pcall(function()
-                        Remotes_m.Invoke("_vault_tx", "Deposit", attrName, count)
-                    end)
-                    task.wait(0.15)
+    if not myCar or not hum.Sit then EnsureCarAvailable() end
+    DriveCarTo(VAULT_COORDS + Vector3.new(0, 0, 8.0), shouldContinueCheck); task.wait(0.2)
+    pcall(function()
+        local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
+        if remCore then
+            local Remotes_m = require(remCore)
+            local pData = LocalPlayer:FindFirstChild("PlayerData")
+            if pData then
+                for attrName, _ in pairs(pData:GetAttributes()) do
+                    local count = GetPlayerInventoryCount(attrName)
+                    if count > 0 then pcall(function() Remotes_m.Invoke("_vault_tx", "Deposit", attrName, count) end); task.wait(0.15) end
                 end
             end
         end
-    end
-
+    end)
     task.wait(0.3)
+    local carAfterVault = GetPlayerVehicle() or EnsureCarAvailable(TOWN_CAR_SPAWN)
+    if carAfterVault then EnsurePlayerSeatedInCar(carAfterVault) end
+end
 
-    local carAfterVault = GetPlayerVehicle()
-    if not carAfterVault then
-        carAfterVault = EnsureCarAvailable(TOWN_CAR_SPAWN)
+local function SellAtEconomyMarket(shouldContinueCheck)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+    local marketPos = TYPER_LOCATIONS.Economy.Market
+    local myCar = GetPlayerVehicle()
+    if not myCar or not hum.Sit then
+        if not myCar then myCar = EnsureCarAvailable(TOWN_CAR_SPAWN) end
+        if myCar then EnsurePlayerSeatedInCar(myCar) end
     end
-    if carAfterVault then
-        EnsurePlayerSeatedInCar(carAfterVault)
+    DriveCarTo(marketPos, shouldContinueCheck); task.wait(0.3)
+    ExitCarNaturally(myCar)
+    if root then
+        local gY = GetGroundLevel(marketPos.X, marketPos.Z, marketPos.Y)
+        root.CFrame = CFrame.lookAt(Vector3.new(marketPos.X + 2.5, gY + 2.2, marketPos.Z), marketPos)
+        root.AssemblyLinearVelocity = Vector3.zero
     end
     task.wait(0.2)
+    local econPrompt = FindPromptNear(root.Position, 25, "econ")
+    if econPrompt then TriggerPrompt(econPrompt) end; task.wait(0.4)
+    pcall(function()
+        local remCore = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Modules") and ReplicatedStorage.Systems.Modules:FindFirstChild("Core") and ReplicatedStorage.Systems.Modules.Core:FindFirstChild("Remotes")
+        if remCore then local Remotes_m = require(remCore); Remotes_m.Invoke("_economy", "SellAll"); Remotes_m.Fire("_economy", "SellAll") end
+    end)
+    task.wait(1.0)
+    pcall(function() local eg = PlayerGui:FindFirstChild("Economy"); if eg and eg:FindFirstChild("Group") then eg.Group.Visible = false end end)
 end
--- ROOT GUI
+
+-- [ฟังก์ชันตกปลา - ย่อ]
+local function StartAutoFishing()
+    isAutoFishingEnabled = true
+    warn("🎣 เริ่มตกปลาอัตโนมัติ (Placeholder)")
+end
+local function StopAutoFishing()
+    isAutoFishingEnabled = false
+    warn("🛑 หยุดตกปลา")
+end
+--// ============================================================
+--//  RELWX HUB x NEXUS TYPER TOWN | FULL VERSION | PART 4/4
+--// ============================================================
+
 pcall(function()
     for _, v in ipairs(PlayerGui:GetChildren()) do
         if v.Name == "RELWX_UI" or v.Name == "RELWX_Floating" or v.Name == "RELWX_Stats" then v:Destroy() end
@@ -871,7 +1207,6 @@ local function ViewSize()
     if s.X > 0 and s.Y > 0 then return s end
     return workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
 end
-
 local function TargetScale()
     local v = ViewSize()
     local fit = math.min(v.X * 0.97 / BW, v.Y * 0.95 / BH)
@@ -949,7 +1284,6 @@ local function PlayToggleSound(on, big)
     end)
 end
 
--- (ข้าม FX เพื่อความกระชับ ใช้ของเดิม)
 local function PlayOpen()
     Main.Visible = true
     Main.GroupTransparency = 0
@@ -960,7 +1294,6 @@ local function PlayClose()
     Main.Visible = false
     PlayToggleSound(false, true)
 end
-
 local function SetWindow(visible)
     SetConfig("WindowVisible", visible)
     if visible then PlayOpen() else PlayClose() end
@@ -1016,7 +1349,7 @@ local function Toast(text, on)
     end)
 end
 
--- FPS / MS WIDGET
+-- FPS/MS WIDGET
 local StatsGui = New("ScreenGui", { Name = "RELWX_Stats", ResetOnSpawn = false, DisplayOrder = 999999, IgnoreGuiInset = true, Enabled = Config.StatsVisible }, PlayerGui)
 local StatsBox = New("Frame", { Size = UDim2.fromOffset(152, 30), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(Config.StatsX, Config.StatsY), BorderSizePixel = 0, BackgroundTransparency = 0.1, Active = true }, StatsGui)
 Bind(StatsBox, "BackgroundColor3", "Surface"); Corner(StatsBox, 15); Bind(Stroke(StatsBox, Theme.Stroke, 1, 0.2), "Color", "Stroke")
@@ -1068,16 +1401,11 @@ OnTheme(function() Brand.Text = 'RELWX <font color="#' .. Theme.Accent:ToHex() .
 Brand.Position = UDim2.fromOffset(60, 10); Brand.Size = UDim2.new(1, -270, 0, 22)
 local BrandSub = Text(Top, "NEXUS EDITION", 10, FNT.R, "Muted"); BrandSub.Position = UDim2.fromOffset(60, 31); BrandSub.Size = UDim2.new(1, -270, 0, 16)
 
-local function WindowButton(kind, xOffset, danger)
-    local b = New("TextButton", { Size = UDim2.fromOffset(32, 32), Position = UDim2.new(1, xOffset, 0.5, -16), BorderSizePixel = 0, Text = "", AutoButtonColor = false }, Top)
-    Corner(b, 10); Bind(b, "BackgroundColor3", "Surface2")
-    local paint = Icon(b, kind, 7, 7); OnTheme(function() paint(Theme.Sub) end)
-    b.MouseEnter:Connect(function() Tween(b, 0.12, { BackgroundColor3 = danger and RGB(200, 70, 80) or Theme.Button }); paint(danger and RGB(255, 255, 255) or Theme.Text) end)
-    b.MouseLeave:Connect(function() Tween(b, 0.12, { BackgroundColor3 = Theme.Surface2 }); paint(Theme.Sub) end)
-    return b
-end
-local MaxBtn = WindowButton("max", -86, false)
-local CloseBtn = WindowButton("close", -48, true)
+local MaxBtn = New("TextButton", { Size = UDim2.fromOffset(32, 32), Position = UDim2.new(1, -86, 0.5, -16), BackgroundColor3 = Theme.Surface2, Text = "□", TextSize = 20, Font = FNT.B, TextColor3 = Theme.Sub }, Top)
+Corner(MaxBtn, 10)
+local CloseBtn = New("TextButton", { Size = UDim2.fromOffset(32, 32), Position = UDim2.new(1, -48, 0.5, -16), BackgroundColor3 = Theme.Surface2, Text = "×", TextSize = 20, Font = FNT.B, TextColor3 = Theme.Sub }, Top)
+Corner(CloseBtn, 10)
+
 CloseBtn.MouseButton1Click:Connect(function() SetWindow(false) end)
 MakeDraggable(Top, Main, "WindowX", "WindowY")
 MaxBtn.MouseButton1Click:Connect(function()
@@ -1088,15 +1416,13 @@ end)
 -- SIDEBAR
 local Rail = New("Frame", { Size = UDim2.new(0, SW, 1, -80), Position = UDim2.fromOffset(12, 68), BorderSizePixel = 0 }, Main)
 Bind(Rail, "BackgroundColor3", "Surface"); Corner(Rail, 14); Bind(Stroke(Rail, Theme.Stroke, 1, 0.4), "Color", "Stroke")
-local CatList = New("ScrollingFrame", { Size = UDim2.new(1, -16, 1, -80), Position = UDim2.fromOffset(8, 10), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 2, ScrollBarImageTransparency = 0.3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y, ElasticBehavior = Enum.ElasticBehavior.Never }, Rail)
+local CatList = New("ScrollingFrame", { Size = UDim2.new(1, -16, 1, -16), Position = UDim2.fromOffset(8, 8), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 2, ScrollBarImageTransparency = 0.3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y, ElasticBehavior = Enum.ElasticBehavior.Never }, Rail)
 Bind(CatList, "ScrollBarImageColor3", "Accent"); List(CatList, 4); Pad(CatList, 0, 4, 1, 1)
 
 local UserBox = New("Frame", { Size = UDim2.new(1, -16, 0, 52), Position = UDim2.new(0, 8, 1, -60), BorderSizePixel = 0 }, Rail)
 Bind(UserBox, "BackgroundColor3", "Surface2"); Corner(UserBox, 12)
 local Avatar = New("ImageLabel", { Size = UDim2.fromOffset(34, 34), Position = UDim2.new(0, 9, 0.5, -17), BorderSizePixel = 0, Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=60&h=60" }, UserBox)
 Corner(Avatar, 17); Bind(Avatar, "BackgroundColor3", "Button"); Bind(Stroke(Avatar, Theme.Accent, 1.5, 0.2), "Color", "Accent"); Bind(Stroke(UserBox, Theme.Stroke, 1, 0.5), "Color", "Stroke")
-local Online = New("Frame", { Size = UDim2.fromOffset(10, 10), Position = UDim2.new(0, 36, 0.5, 7), BorderSizePixel = 0, BackgroundColor3 = RGB(70, 200, 120), ZIndex = 3 }, UserBox)
-Corner(Online, 5); Bind(Stroke(Online, Theme.Surface2, 2, 0), "Color", "Surface2")
 local UName = Text(UserBox, LocalPlayer.DisplayName, 12, FNT.B, "Text"); UName.Position = UDim2.fromOffset(52, 9); UName.Size = UDim2.new(1, -58, 0, 18)
 local UTag = Text(UserBox, "@" .. LocalPlayer.Name, 10, FNT.R, "Muted"); UTag.Position = UDim2.fromOffset(52, 27); UTag.Size = UDim2.new(1, -58, 0, 14)
 
@@ -1116,152 +1442,69 @@ local function SelectTab(id)
         local p = Pages[id]; p.Position = UDim2.fromOffset(0, 16)
         Tween(p, 0.32, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quint)
     end
-    for _, t in ipairs(TabList) do t.active = (t.id == id); t.paint() end
+    for _, t in ipairs(TabList) do 
+        t.btn.BackgroundColor3 = (t.id == id) and Theme.Accent or Theme.Button
+        t.btn.BackgroundTransparency = (t.id == id) and 0.84 or 1
+        t.lbl.TextColor3 = (t.id == id) and Theme.Text or Theme.Sub
+    end
 end
-local function Category(name, id, iconKind)
+local function Category(name, id)
     local b = New("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundTransparency = 1, BorderSizePixel = 0, Text = "", AutoButtonColor = false, LayoutOrder = Next(CatList) }, CatList)
     Corner(b, 11)
-    local bst = Stroke(b, Theme.Accent, 1, 1)
-    local ind = New("Frame", { Size = UDim2.fromOffset(3, 8), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 4, 0.5, 0), BackgroundTransparency = 1, BorderSizePixel = 0 }, b)
-    Corner(ind, 2)
-    local setIcon = Icon(b, iconKind, 16, 12)
-    local lbl = Text(b, name, 13, FNT.M); lbl.Position = UDim2.fromOffset(44, 0); lbl.Size = UDim2.new(1, -48, 1, 0); lbl.TextColor3 = Theme.Sub
-    local tab = { id = id, active = false, hover = false }
-    function tab.paint()
-        Tween(b, 0.15, { BackgroundColor3 = tab.active and Theme.Accent or Theme.Button, BackgroundTransparency = tab.active and 0.84 or (tab.hover and 0.5 or 1) })
-        Tween(bst, 0.15, { Color = Theme.Accent, Transparency = tab.active and 0.55 or 1 })
-        Tween(lbl, 0.15, { TextColor3 = tab.active and Theme.Text or Theme.Sub })
-        Tween(ind, 0.15, { BackgroundColor3 = Theme.Accent, BackgroundTransparency = tab.active and 0 or 1, Size = tab.active and UDim2.fromOffset(3, 22) or UDim2.fromOffset(3, 8) })
-        setIcon(tab.active and Theme.Accent or Theme.Sub)
-    end
-    TabList[#TabList + 1] = tab; OnTheme(tab.paint)
-    b.MouseEnter:Connect(function() tab.hover = true; tab.paint() end)
-    b.MouseLeave:Connect(function() tab.hover = false; tab.paint() end)
+    local lbl = Text(b, name, 13, FNT.M)
+    lbl.Position = UDim2.fromOffset(16, 0); lbl.Size = UDim2.new(1, -20, 1, 0); lbl.TextColor3 = Theme.Sub
+    table.insert(TabList, { id = id, btn = b, lbl = lbl })
     b.MouseButton1Click:Connect(function() SelectTab(id) end)
-    return b
 end
 
--- PAGES & SECTIONS
+-- PAGES
 local Body = New("Frame", { Size = UDim2.new(1, -(SW + 36), 1, -80), Position = UDim2.fromOffset(SW + 24, 68), BackgroundTransparency = 1 }, Main)
 local function MakePage(id, title, subtitle)
     local page = New("ScrollingFrame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y, Visible = false }, Body)
     Bind(page, "ScrollBarImageColor3", "Stroke"); List(page, 8); Pad(page, 0, 8, 0, 14)
-    local head = New("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundTransparency = 1, LayoutOrder = Next(page) }, page)
-    local t = Text(head, title, 22, FNT.B, "Text"); t.Size = UDim2.new(1, 0, 0, 28)
-    local s = Text(head, subtitle or "", 11, FNT.R, "Muted"); s.Position = UDim2.fromOffset(0, 29); s.Size = UDim2.new(1, 0, 0, 18)
-    local hb = New("Frame", { Size = UDim2.fromOffset(36, 3), Position = UDim2.fromOffset(0, 53), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1) }, head)
+    local t = Text(page, title, 22, FNT.B, "Text"); t.Size = UDim2.new(1, 0, 0, 28)
+    local s = Text(page, subtitle or "", 11, FNT.R, "Muted"); s.Position = UDim2.fromOffset(0, 29); s.Size = UDim2.new(1, 0, 0, 18)
+    local hb = New("Frame", { Size = UDim2.fromOffset(36, 3), Position = UDim2.fromOffset(0, 53), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1) }, page)
     Corner(hb, 2); AccentGrad(hb, 0)
     Pages[id] = page
     return page
 end
-
-local Collapsed = {}
-for id in string.gmatch(Config.CollapsedSections, "[^|]+") do Collapsed[id] = true end
-local function SaveCollapsed()
-    local t = {}
-    for id, v in pairs(Collapsed) do if v then t[#t + 1] = id end end
-    table.sort(t); SetConfig("CollapsedSections", table.concat(t, "|"))
-end
-local SectionsByPage = {}
-local CurrentSection = nil
 local function Section(page, title)
-    local hdr = New("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, LayoutOrder = Next(page) }, page)
+    local hdr = New("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, LayoutOrder = Next(page) }, page)
     local bar = New("Frame", { Size = UDim2.fromOffset(3, 14), Position = UDim2.new(0, 2, 0.5, -7), BorderSizePixel = 0 }, hdr)
     Corner(bar, 2); bar.BackgroundColor3 = Color3.new(1, 1, 1); AccentGrad(bar, 90)
-    local hl = New("Frame", { Size = UDim2.new(1, -4, 0, 1), Position = UDim2.new(0, 2, 1, -1), BorderSizePixel = 0 }, hdr)
-    Bind(hl, "BackgroundColor3", "Stroke"); New("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }) }, hl)
     local label = Text(hdr, title, 13, FNT.B, "Text"); label.Position = UDim2.fromOffset(14, 0); label.Size = UDim2.new(1, -44, 1, 0)
-    local chev = New("Frame", { Size = UDim2.fromOffset(14, 14), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -18, 0.5, 0), BackgroundTransparency = 1 }, hdr)
-    local c1 = New("Frame", { Size = UDim2.fromOffset(8, 2), Position = UDim2.fromOffset(1, 6), Rotation = 45, BorderSizePixel = 0 }, chev)
-    local c2 = New("Frame", { Size = UDim2.fromOffset(8, 2), Position = UDim2.fromOffset(6, 6), Rotation = -45, BorderSizePixel = 0 }, chev)
-    Corner(c1, 1); Corner(c2, 1)
-    OnTheme(function() c1.BackgroundColor3 = Theme.Muted; c2.BackgroundColor3 = Theme.Muted end)
-    local sec = { label = hdr, items = {}, collapsed = Collapsed[title] == true }
-    function sec.refresh(animate)
-        for _, it in ipairs(sec.items) do it.frame.Visible = it.matched and not sec.collapsed end
-        local rot = sec.collapsed and -90 or 0
-        if animate then Tween(chev, 0.18, { Rotation = rot }) else chev.Rotation = rot end
-    end
-    sec.refresh(false)
-    hdr.MouseButton1Click:Connect(function() sec.collapsed = not sec.collapsed; Collapsed[title] = sec.collapsed; SaveCollapsed(); sec.refresh(true) end)
-    CurrentSection = sec; SectionsByPage[page] = SectionsByPage[page] or {}; table.insert(SectionsByPage[page], sec)
-    return sec
-end
-local function Register(row, search)
-    local sec = CurrentSection
-    if sec then table.insert(sec.items, { frame = row, search = string.lower(search or ""), matched = true }); sec.refresh(false) end
-end
-local Refreshers = {}
-
--- COMPONENTS (ใช้ฟังก์ชัน Panel/Toggle/Slider จาก RELWX v7)
-local UpdateSummary = function() end
-local function Toggle(page, opts)
-    local row = Panel(page, UDim2.new(1, 0, 0, 64), "TextButton"); HoverRow(row); Register(row, opts.title .. " " .. (opts.desc or ""))
-    local rowStroke = row:FindFirstChildOfClass("UIStroke")
-    local title = Text(row, opts.title, 13, FNT.M, "Text"); title.Position = UDim2.fromOffset(18, 11); title.Size = UDim2.new(1, -96, 0, 20)
-    local desc = Text(row, opts.desc or "", 11, FNT.R, "Muted"); desc.Position = UDim2.fromOffset(18, 33); desc.Size = UDim2.new(1, -96, 0, 18)
-    local strip = New("Frame", { Size = UDim2.fromOffset(3, 26), Position = UDim2.new(0, 4, 0.5, -13), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1 }, row)
-    Corner(strip, 2); AccentGrad(strip, 90)
-    local glow = New("Frame", { Size = UDim2.fromOffset(62, 40), Position = UDim2.new(1, -71, 0.5, -20), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1 }, row)
-    Corner(glow, 20); AccentGrad(glow, 0)
-    local track = New("Frame", { Size = UDim2.fromOffset(48, 26), Position = UDim2.new(1, -64, 0.5, -13), BorderSizePixel = 0 }, row)
-    Corner(track, 13)
-    local tStroke = Stroke(track, Theme.Stroke, 1, 0.2); Bind(tStroke, "Color", "Stroke")
-    local fill = New("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1 }, track)
-    Corner(fill, 13); AccentGrad(fill, 0)
-    local knob = New("Frame", { Size = UDim2.fromOffset(20, 20), Position = UDim2.fromOffset(3, 3), BorderSizePixel = 0 }, track)
-    Corner(knob, 10)
-    local state = Config[opts.key] == true
-    local function render(animate)
-        Apply(track, animate, { BackgroundColor3 = Theme.Button })
-        Apply(fill, animate, { BackgroundTransparency = state and 0 or 1 })
-        Apply(glow, animate, { BackgroundTransparency = state and 0.82 or 1 })
-        Apply(knob, animate, { Position = state and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3), BackgroundColor3 = state and Theme.OnAccent or Theme.Sub })
-        Apply(strip, animate, { BackgroundTransparency = state and 0 or 1 })
-        Apply(tStroke, animate, { Color = state and Theme.Accent or Theme.Stroke })
-        if rowStroke then Apply(rowStroke, animate, { Color = state and Theme.Accent or Theme.Stroke, Transparency = state and 0.55 or 0.4 }) end
-        UpdateSummary()
-    end
-    OnTheme(function() render(false) end)
-    local function set(v, fire)
-        state = v; SetConfig(opts.key, v); render(true)
-        if fire then PlayToggleSound(v); if opts.callback then task.spawn(opts.callback, v) end end
-    end
-    row.MouseButton1Click:Connect(function() set(not state, true) end)
-    Refreshers[#Refreshers + 1] = function() state = Config[opts.key] == true; render(false); if opts.callback then task.spawn(opts.callback, state) end end
-    if opts.callback then task.defer(opts.callback, state) end
-    return { Get = function() return state end, Set = function(v) set(v, true) end }
+    return hdr
 end
 
--- สร้างปุ่มฟาร์มแบบง่าย
 local function CreateFarmButton(page, cropName, displayName, icon)
     local btn = Panel(page, UDim2.new(1, 0, 0, 56), "TextButton")
     HoverRow(btn)
-    local t = Text(btn, icon .. "  " .. displayName, 13, FNT.M, "Text")
-    t.Position = UDim2.fromOffset(18, 0)
-    t.Size = UDim2.new(1, -36, 1, 0)
+    local t = Text(btn, icon .. "  " .. displayName, 13, FNT.M, "Text"); t.Position = UDim2.fromOffset(18, 0); t.Size = UDim2.new(1, -36, 1, 0)
     btn.MouseButton1Click:Connect(function()
         if cropName == "Sandwish" or cropName == "MangoRice" or cropName == "KangSom" then
+            Toast("🍳 เริ่มคราฟ " .. cropName, true)
             task.spawn(function() CraftFoodAtStation(cropName, function() return true end) end)
         elseif cropName == "ProcessBanana" then
+            Toast("🍌 เริ่มแปรรูปกล้วย", true)
             task.spawn(function() ProcessBananaAtStation(function() return true end) end)
         elseif cropName == "ProcessRock" then
+            Toast("🔥 เริ่มหลอมหิน", true)
             task.spawn(function() ProcessOreAtStation("Rock", 2, function() return true end) end)
         elseif cropName == "ProcessSvibranium" then
+            Toast("⚡ เริ่มหลอมไวเบรเนียม", true)
             task.spawn(function() ProcessOreAtStation("Svibranium", 4, function() return true end) end)
         elseif cropName == "DepositVault" then
+            Toast("🏦 เก็บของเข้าตู้เซฟ", true)
             task.spawn(function() DepositAllToVault(function() return true end) end)
         elseif cropName == "SellMarket" then
+            Toast("💰 ขายของที่ตลาด", true)
             task.spawn(function() SellAtEconomyMarket(function() return true end) end)
         elseif cropName == "AutoFishing" then
-            if not isAutoFishingEnabled then 
-                isAutoFishingEnabled = true
-                Toast("🎣 เริ่มตกปลา", true) 
-            else 
-                isAutoFishingEnabled = false
-                Toast("🛑 หยุดตกปลา", false) 
-            end
+            if not isAutoFishingEnabled then StartAutoFishing(); Toast("🎣 เริ่มตกปลา", true)
+            else StopAutoFishing(); Toast("🛑 หยุดตกปลา", false) end
         elseif cropName == "WarpTown" then
+            Toast("🚀 วาปไปเบิกรถที่เมือง", true)
             task.spawn(function() WarpToTownAndSpawnCar() end)
         else
             Toast("🚜 เริ่มฟาร์ม " .. cropName .. "...", true)
@@ -1273,10 +1516,18 @@ end
 
 -- HOME PAGE
 local Home = MakePage("Home", "หน้าหลัก", "RELWX HUB x NEXUS TYPER TOWN")
-local Welcome = Panel(Home, UDim2.new(1, 0, 0, 84))
-Tint(Welcome)
+local Welcome = Panel(Home, UDim2.new(1, 0, 0, 84)); Tint(Welcome)
 local WelcomeText = Text(Welcome, "RELWX HUB", 22, FNT.B, "Text"); WelcomeText.Position = UDim2.fromOffset(20, 12); WelcomeText.Size = UDim2.new(1, -40, 0, 30)
 local WelcomeSub = Text(Welcome, "ยินดีต้อนรับ, " .. LocalPlayer.DisplayName, 11, FNT.M, "Muted"); WelcomeSub.Position = UDim2.fromOffset(20, 46); WelcomeSub.Size = UDim2.new(1, -40, 0, 20)
+
+local InfoCard = Panel(Home, UDim2.new(1, 0, 0, 120))
+local InfoTitle = Text(InfoCard, "📊 สถิติ", 14, FNT.B, "Text"); InfoTitle.Position = UDim2.fromOffset(16, 12); InfoTitle.Size = UDim2.new(1, -32, 0, 20)
+local InfoGrid = New("Frame", { Size = UDim2.new(1, -32, 0, 0), Position = UDim2.fromOffset(16, 40), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1 }, InfoCard)
+New("UIGridLayout", { CellSize = UDim2.new(0.5, -5, 0, 32), CellPadding = UDim2.fromOffset(10, 5), SortOrder = Enum.SortOrder.LayoutOrder }, InfoGrid)
+local StatFpsHome = Text(InfoGrid, "FPS: --", 11, FNT.M, "Text"); StatFpsHome.Size = UDim2.fromScale(1, 1)
+local StatPingHome = Text(InfoGrid, "MS: --", 11, FNT.M, "Text"); StatPingHome.Size = UDim2.fromScale(1, 1)
+local StatPlayerHome = Text(InfoGrid, "ผู้เล่น: --", 11, FNT.M, "Text"); StatPlayerHome.Size = UDim2.fromScale(1, 1)
+local StatTimeHome = Text(InfoGrid, "เวลา: 00:00", 11, FNT.M, "Text"); StatTimeHome.Size = UDim2.fromScale(1, 1)
 
 -- DEX PAGE
 local DexPage = MakePage("Dex", "พิกัด DEX", "ระบบฟาร์ม NEXUS HUB ครบวงจร")
@@ -1293,10 +1544,15 @@ CreateFarmButton(DexPage, "Mango", "มะม่วง (Mango)", "🥭")
 CreateFarmButton(DexPage, "Rice", "ข้าว (Rice)", "🌾")
 CreateFarmButton(DexPage, "Tomato", "มะเขือเทศ (Tomato)", "🍅")
 CreateFarmButton(DexPage, "Banana", "กล้วย (Banana)", "🍌")
+CreateFarmButton(DexPage, "Coconut", "มะพร้าว (Coconut)", "🥥")
+CreateFarmButton(DexPage, "Corn", "ข้าวโพด (Corn)", "🌽")
+CreateFarmButton(DexPage, "Sugarcane", "อ้อย (Sugarcane)", "🎋")
 
 Section(DexPage, "🐷 ฟาร์มสัตว์")
 CreateFarmButton(DexPage, "Pig", "หมู (Pig)", "🐷")
 CreateFarmButton(DexPage, "Crab", "ปู (Crab)", "🦀")
+CreateFarmButton(DexPage, "Egg", "ไข่ไก่ (Egg)", "🥚")
+CreateFarmButton(DexPage, "Milk", "นม (Milk)", "🥛")
 
 Section(DexPage, "⛏️ ฟาร์มเหมือง")
 CreateFarmButton(DexPage, "Rock", "หิน (Rock)", "🪨")
@@ -1304,13 +1560,13 @@ CreateFarmButton(DexPage, "Svibranium", "ไวเบรเนียม (Svibran
 
 Section(DexPage, "🍳 แปรรูป / หลอมแร่")
 CreateFarmButton(DexPage, "ProcessRock", "หลอมหิน (Process Rock)", "🔥")
-CreateFarmButton(DexPage, "ProcessSvibranium", "หลอมไวเบรเนียม (Process Svibranium)", "⚡")
-CreateFarmButton(DexPage, "ProcessBanana", "แปรรูปกล้วย (Banana Pack)", "🍌")
+CreateFarmButton(DexPage, "ProcessSvibranium", "หลอมไวเบรเนียม", "⚡")
+CreateFarmButton(DexPage, "ProcessBanana", "แปรรูปกล้วย", "🍌")
 
 Section(DexPage, "🍱 คราฟอาหาร")
-CreateFarmButton(DexPage, "Sandwish", "แซนวิช (Sandwich)", "🥪")
-CreateFarmButton(DexPage, "MangoRice", "ข้าวมันมะม่วง (Mango Rice)", "🥭")
-CreateFarmButton(DexPage, "KangSom", "แกงส้ม (Kang Som)", "🍲")
+CreateFarmButton(DexPage, "Sandwish", "แซนวิช", "🥪")
+CreateFarmButton(DexPage, "MangoRice", "ข้าวมันมะม่วง", "🥭")
+CreateFarmButton(DexPage, "KangSom", "แกงส้ม", "🍲")
 
 Section(DexPage, "🎣 ตกปลา")
 CreateFarmButton(DexPage, "AutoFishing", "เปิด/ปิด ตกปลาอัตโนมัติ", "🎣")
@@ -1335,11 +1591,11 @@ end)
 
 -- SIDEBAR CATEGORIES
 CatGroup("เมนูหลัก")
-Category("หน้าหลัก", "Home", "grid")
-Category("พิกัด DEX", "Dex", "sliders")
+Category("🏠 หน้าหลัก", "Home")
+Category("🎯 พิกัด DEX", "Dex")
 CatGroup("ระบบ")
-Category("ระบบ", "System", "sliders")
-Category("ตั้งค่า", "Settings", "ring")
+Category("⚙️ ระบบ", "System")
+Category("🔧 ตั้งค่า", "Settings")
 
 -- FLOATING RX BUTTON
 local ToggleGui = New("ScreenGui", { Name = "RELWX_Floating", ResetOnSpawn = false, DisplayOrder = 999999, IgnoreGuiInset = true }, PlayerGui)
@@ -1367,6 +1623,15 @@ RefreshStats()
 task.spawn(function()
     while Screen.Parent do
         RefreshStats()
+        if StatFpsHome then
+            StatFpsHome.Text = "FPS: " .. tostring(Metrics.fps)
+            StatFpsHome.TextColor3 = Level(Metrics.fps, 50, 30, true)
+            StatPingHome.Text = "MS: " .. tostring(Metrics.ping)
+            StatPingHome.TextColor3 = Level(Metrics.ping, 80, 160, false)
+            StatPlayerHome.Text = "ผู้เล่น: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(Players.MaxPlayers)
+            local sec = math.max(0, os.time() - sessionStart)
+            StatTimeHome.Text = string.format("เวลา: %02d:%02d", math.floor(sec / 60), sec % 60)
+        end
         task.wait(0.5)
     end
 end)
@@ -1378,4 +1643,4 @@ if Config.WindowVisible then
 end
 if not LoadedFromFile then SaveConfig(true) end
 
-print("[RELWX x NEXUS] FIXED EDITION Loaded Successfully!")
+print("[RELWX x NEXUS] FULL VERSION Loaded Successfully!")
