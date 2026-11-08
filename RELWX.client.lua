@@ -1,7 +1,5 @@
 --// ============================================================
---//  RELWX HUB  |  UI v7  (UI ONLY — 3 Tabs + Real FPS/MS)
---//  - ลบการปรับสีทีละจุด (ColorRow) ออก เหลือแค่ธีมสำเร็จรูป
---//  - ย้ายเมนู "ตั้งค่า" ไปไว้ล่างสุด
+--//  RELWX HUB  |  UI v7  (UI ONLY — Home Dashboard + DEX Tab)
 --// ============================================================
 
 local Players = game:GetService("Players")
@@ -11,6 +9,7 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local SoundService = game:GetService("SoundService")
 local Debris = game:GetService("Debris")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- ฟอนต์ UI
 local UI_FONT = "Montserrat"
@@ -659,12 +658,6 @@ local function RefreshStats()
     end
 end
 
-task.spawn(function()
-    while task.wait(0.5) do
-        RefreshStats()
-    end
-end)
-
 --==================================================
 -- TOP BAR
 --==================================================
@@ -1062,28 +1055,238 @@ local function ThemeGrid(page)
 end
 
 --==================================================
--- [ แท็บ 1 ] HOME
+-- [ แท็บ 1 ] HOME (Dashboard)
 --==================================================
-local Home = MakePage("Home", "หน้าหลัก", "ยินดีต้อนรับสู่ RELWX HUB")
-local Welcome = Panel(Home, UDim2.new(1, 0, 0, 84))
-Tint(Welcome)
-local WelcomeText = Text(Welcome, "RELWX HUB", 22, FNT.B, "Text")
-WelcomeText.Position = UDim2.fromOffset(20, 12)
-WelcomeText.Size = UDim2.new(1, -40, 0, 30)
-local WelcomeSub = Text(Welcome, "ยินดีต้อนรับ, " .. LocalPlayer.DisplayName, 11, FNT.M, "Muted")
-WelcomeSub.Position = UDim2.fromOffset(20, 46)
-WelcomeSub.Size = UDim2.new(1, -40, 0, 20)
+local Home = MakePage("Home", "หน้าหลัก", "ภาพรวมและข้อมูลเซิร์ฟเวอร์")
 
-local UiCard = Panel(Home, UDim2.new(1, 0, 0, 72))
-local UiCardTitle = Text(UiCard, "ระบบ UI พร้อมใช้งาน", 13, FNT.B, "Text")
-UiCardTitle.Position = UDim2.fromOffset(16, 12)
-UiCardTitle.Size = UDim2.new(1, -32, 0, 20)
-local UiCardDesc = Text(UiCard, "คุณสามารถปรับแต่งขนาด, และตำแหน่งของหน้าต่างได้ที่แท็บ 'ตั้งค่า'", 11, FNT.R, "Muted")
-UiCardDesc.Position = UDim2.fromOffset(16, 36)
-UiCardDesc.Size = UDim2.new(1, -32, 0, 20)
+local Hero = Panel(Home, UDim2.new(1, 0, 0, 84))
+Tint(Hero)
+local HeroSub = Text(Hero, "", 11, FNT.M, "Muted")
+HeroSub.Position = UDim2.fromOffset(20, 14)
+HeroSub.Size = UDim2.new(0.6, 0, 0, 16)
+local HeroName = Text(Hero, LocalPlayer.DisplayName, 24, FNT.B, Color3.new(1, 1, 1))
+HeroName.Position = UDim2.fromOffset(20, 32)
+HeroName.Size = UDim2.new(0.6, 0, 0, 38)
+AccentGrad(HeroName, 0)
+local HeroClock = Text(Hero, "", 26, FNT.B, "Text", Enum.TextXAlignment.Right)
+HeroClock.Position = UDim2.new(0.5, 0, 0, 16)
+HeroClock.Size = UDim2.new(0.5, -20, 0, 34)
+local HeroDate = Text(Hero, "", 10, FNT.M, "Muted", Enum.TextXAlignment.Right)
+HeroDate.Position = UDim2.new(0.5, 0, 0, 52)
+HeroDate.Size = UDim2.new(0.5, -20, 0, 16)
+
+local MapImage = "rbxthumb://type=GameIcon&id=" .. tostring(game.GameId) .. "&w=150&h=150"
+
+local MapCard = Panel(Home, UDim2.new(1, 0, 0, 116))
+MapCard.ClipsDescendants = true
+
+local MapBG = New("ImageLabel", {
+    Size = UDim2.fromScale(1, 1),
+    BackgroundTransparency = 1,
+    Image = MapImage,
+    ScaleType = Enum.ScaleType.Crop,
+    ImageTransparency = 0.86,
+}, MapCard)
+Corner(MapBG, 12)
+
+local MapFade = New("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0 }, MapCard)
+Bind(MapFade, "BackgroundColor3", "Surface")
+New("UIGradient", {
+    Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.1),
+        NumberSequenceKeypoint.new(1, 0.7),
+    }),
+}, MapFade)
+Corner(MapFade, 12)
+Tint(MapCard)
+
+local MapIcon = New("ImageLabel", {
+    Size = UDim2.fromOffset(84, 84),
+    Position = UDim2.fromOffset(16, 16),
+    BorderSizePixel = 0,
+    Image = MapImage,
+    ScaleType = Enum.ScaleType.Crop,
+}, MapCard)
+Corner(MapIcon, 16)
+Bind(MapIcon, "BackgroundColor3", "Button")
+Bind(Stroke(MapIcon, Theme.Stroke, 1.5, 0.1), "Color", "Stroke")
+
+local MapName = Text(MapCard, tostring(game.Name or "Unknown"), 17, FNT.B, "Text")
+MapName.Position = UDim2.fromOffset(112, 16)
+MapName.Size = UDim2.new(1, -128, 0, 26)
+
+local MapBy = Text(MapCard, "กำลังโหลดข้อมูลแมพ...", 11, FNT.R, "Muted")
+MapBy.Position = UDim2.fromOffset(112, 43)
+MapBy.Size = UDim2.new(1, -128, 0, 16)
+
+local Chips = New("Frame", {
+    Size = UDim2.new(1, -128, 0, 24),
+    Position = UDim2.fromOffset(112, 72),
+    BackgroundTransparency = 1,
+}, MapCard)
+New("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal,
+    Padding = UDim.new(0, 6),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+}, Chips)
+
+local function Chip(text)
+    local c = New("TextLabel", {
+        Size = UDim2.fromOffset(0, 24),
+        AutomaticSize = Enum.AutomaticSize.X,
+        BorderSizePixel = 0,
+        Text = text,
+        TextSize = 10,
+        Font = FNT.M,
+        LayoutOrder = Next(Chips),
+    }, Chips)
+    Bind(c, "BackgroundColor3", "Surface2")
+    Bind(c, "TextColor3", "Sub")
+    Corner(c, 12)
+    Pad(c, 10, 10, 0, 0)
+    return c
+end
+
+local ChipPlace = Chip("ID " .. tostring(game.PlaceId))
+local ChipPlayers = Chip("ผู้เล่น -/-")
+
+task.spawn(function()
+    pcall(function()
+        local info = MarketplaceService:GetProductInfo(game.PlaceId)
+        if info then
+            if info.Name and info.Name ~= "" then
+                MapName.Text = tostring(info.Name)
+                BrandSub.Text = tostring(info.Name)
+            end
+            if info.Creator and info.Creator.Name then
+                MapBy.Text = "โดย " .. tostring(info.Creator.Name)
+            else
+                MapBy.Text = ""
+            end
+        end
+    end)
+end)
+
+local function Stat(parent, label, size)
+    local c = Panel(parent, size)
+    local bar = New("Frame", {
+        Size = UDim2.fromOffset(3, 18),
+        Position = UDim2.fromOffset(0, 12),
+        BorderSizePixel = 0,
+        BackgroundColor3 = Color3.new(1, 1, 1),
+    }, c)
+    Corner(bar, 2)
+    AccentGrad(bar, 90)
+    local l = Text(c, label, 10, FNT.M, "Muted")
+    l.Position = UDim2.fromOffset(16, 11)
+    l.Size = UDim2.new(1, -30, 0, 14)
+    local v = Text(c, "-", 14, FNT.B, "Text")
+    v.Position = UDim2.fromOffset(16, 30)
+    v.Size = UDim2.new(1, -30, 0, 22)
+    return v
+end
+
+local Grid = New("Frame", {
+    Size = UDim2.new(1, 0, 0, 0),
+    AutomaticSize = Enum.AutomaticSize.Y,
+    BackgroundTransparency = 1,
+    LayoutOrder = Next(Home),
+}, Home)
+New("UIGridLayout", {
+    CellSize = UDim2.new(0.5, -5, 0, 64),
+    CellPadding = UDim2.fromOffset(10, 10),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+}, Grid)
+
+local StatPlayer = Stat(Grid, "ผู้เล่น")
+local StatTime = Stat(Grid, "เวลาในเซิร์ฟ")
+local StatFps = Stat(Grid, "FPS")
+local StatPing = Stat(Grid, "Ping")
+
+local PerfCard = Panel(Home, UDim2.new(1, 0, 0, 120))
+Tint(PerfCard)
+local PerfTitle = Text(PerfCard, "ประสิทธิภาพ (FPS)", 12, FNT.B, "Text")
+PerfTitle.Position = UDim2.fromOffset(18, 12)
+PerfTitle.Size = UDim2.new(0.5, 0, 0, 18)
+local PerfAvg = Text(PerfCard, "", 11, FNT.M, "Sub", Enum.TextXAlignment.Right)
+PerfAvg.Position = UDim2.new(0.5, 0, 0, 12)
+PerfAvg.Size = UDim2.new(0.5, -18, 0, 18)
+local PerfBars = New("Frame", {
+    Size = UDim2.new(1, -36, 0, 68),
+    Position = UDim2.fromOffset(18, 40),
+    BackgroundTransparency = 1,
+}, PerfCard)
+
+local PERF_N = 36
+local PerfBar, PerfHist = {}, {}
+for i = 1, PERF_N do
+    local b = New("Frame", {
+        Size = UDim2.new(1 / PERF_N, -2, 0, 2),
+        AnchorPoint = Vector2.new(0, 1),
+        Position = UDim2.new((i - 1) / PERF_N, 1, 1, 0),
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+    }, PerfBars)
+    Corner(b, 2)
+    PerfBar[i] = b
+    PerfHist[i] = 0
+end
+
+local function PerfUpdate()
+    table.remove(PerfHist, 1)
+    PerfHist[#PerfHist + 1] = Metrics.fps
+    local peak, sum, cnt = 60, 0, 0
+    for _, v in ipairs(PerfHist) do
+        if v > peak then peak = v end
+        if v > 0 then
+            sum = sum + v
+            cnt = cnt + 1
+        end
+    end
+    for i, v in ipairs(PerfHist) do
+        local b = PerfBar[i]
+        b.Size = UDim2.new(1 / PERF_N, -2, math.clamp(v / peak, 0.04, 1), 0)
+        b.BackgroundColor3 = Level(v, 50, 30, true)
+        b.BackgroundTransparency = v == 0 and 1 or 0.08
+    end
+    PerfAvg.Text = "เฉลี่ย " .. tostring(cnt > 0 and math.floor(sum / cnt + 0.5) or 0) .. " FPS"
+end
+
+local sessionStart = os.time()
+
+local function RefreshHome()
+    local hr = tonumber(os.date("%H")) or 12
+    HeroSub.Text = (hr >= 5 and hr < 12 and "อรุณสวัสดิ์")
+        or (hr >= 12 and hr < 17 and "สวัสดีตอนบ่าย")
+        or (hr >= 17 and hr < 21 and "สวัสดีตอนเย็น")
+        or "ราตรีสวัสดิ์"
+    HeroClock.Text = os.date("%H:%M")
+    HeroDate.Text = os.date("%d / %m / %Y")
+    local sec = math.max(0, os.time() - sessionStart)
+    StatPlayer.Text = LocalPlayer.DisplayName
+    StatTime.Text = string.format("%02d:%02d:%02d", math.floor(sec / 3600), math.floor((sec % 3600) / 60), sec % 60)
+    StatFps.Text = tostring(Metrics.fps)
+    StatFps.TextColor3 = Level(Metrics.fps, 50, 30, true)
+    StatPing.Text = tostring(Metrics.ping) .. " ms"
+    StatPing.TextColor3 = Level(Metrics.ping, 80, 160, false)
+    ChipPlayers.Text = string.format("ผู้เล่น %d/%d", #Players:GetPlayers(), Players.MaxPlayers)
+    PerfUpdate()
+end
 
 --==================================================
--- [ แท็บ 2 ] SYSTEM
+-- [ แท็บ 2 ] DEX (พิกัด)
+--==================================================
+local DexPage = MakePage("Dex", "พิกัด DEX", "รวมพิกัดและตำแหน่งต่างๆ")
+local DexCard = Panel(DexPage, UDim2.new(1, 0, 0, 64))
+local DexTitle = Text(DexCard, "พิกัด DEX", 13, FNT.M, "Text")
+DexTitle.Position = UDim2.fromOffset(16, 11)
+DexTitle.Size = UDim2.new(1, -32, 0, 20)
+local DexDesc = Text(DexCard, "พื้นที่สำหรับใส่ข้อมูลพิกัด DEX", 11, FNT.R, "Muted")
+DexDesc.Position = UDim2.fromOffset(16, 33)
+DexDesc.Size = UDim2.new(1, -32, 0, 18)
+
+--==================================================
+-- [ แท็บ 3 ] SYSTEM
 --==================================================
 local SystemPage = MakePage("System", "ระบบ", "ข้อมูลการทำงานของ UI และเครื่องของคุณ")
 local SysCard1 = Panel(SystemPage, UDim2.new(1, 0, 0, 64))
@@ -1103,7 +1306,7 @@ SysDesc2.Position = UDim2.fromOffset(16, 33)
 SysDesc2.Size = UDim2.new(1, -32, 0, 18)
 
 --==================================================
--- [ แท็บ 3 ] SETTINGS (สร้างไว้บนสุด แต่จะจัดลำดับเมนูไว้ล่างสุด)
+-- [ แท็บ 4 ] SETTINGS
 --==================================================
 local Settings = MakePage("Settings", "ตั้งค่า", "ปรับแต่งหน้าตา RELWX  •  เปลี่ยนแล้วเซฟทันที")
 
@@ -1161,12 +1364,14 @@ ResetRow.MouseButton1Click:Connect(function()
 end)
 
 --==================================================
--- SIDEBAR CATEGORIES (จัดลำดับ: หน้าหลัก -> ระบบ -> ตั้งค่า)
+-- SIDEBAR CATEGORIES (จัดกลุ่มใหม่)
 --==================================================
 CatGroup("เมนูหลัก")
 Category("หน้าหลัก", "Home", "grid")
-Category("ระบบ", "System", "sliders")
-Category("ตั้งค่า", "Settings", "ring") -- ตั้งค่าอยู่ล่างสุด
+Category("พิกัดDEX", "Dex", "sliders") -- [เพิ่ม] แท็บ DEX
+
+CatGroup("ระบบ")
+Category("ตั้งค่า", "Settings", "ring")
 
 --==================================================
 -- FLOATING RX BUTTON
@@ -1195,15 +1400,19 @@ MakeDraggable(RX, Float, "FloatX", "FloatY", function() SetWindow(not Config.Win
 --==================================================
 -- START
 --==================================================
-local function RefreshHome()
-    -- ฟังก์ชันเปล่าเพื่อป้องกัน Error
-end
-
 SelectTab(Config.LastTab)
 RefreshStats()
 RefreshHome()
 
+task.spawn(function()
+    while Screen.Parent do
+        RefreshStats()
+        RefreshHome()
+        task.wait(0.5)
+    end
+end)
+
 if Config.WindowVisible then PlayOpen() end
 if not LoadedFromFile then SaveConfig(true) end
 
-print("[RELWX] UI v7 (3 Tabs, Settings at bottom) Loaded")
+print("[RELWX] UI v7 (Home + DEX + System + Settings) Loaded")
