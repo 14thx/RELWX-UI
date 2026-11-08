@@ -394,9 +394,6 @@ local function CheckAndAutoEat()
     local brain = GetPlayerEnergy()
     if (hunger and hunger <= 80) or (brain and brain <= 80) then AutoEatThenDrink(95) end
 end
---// ============================================================
---//  ฟังก์ชันคราฟเต็ม (แทนที่ placeholder ในพาร์ท 2/3)
---// ============================================================
 
 local function GetCraft3Prompt()
     local craftSys = workspace:FindFirstChild("Systems") and workspace.Systems:FindFirstChild("Crafting")
@@ -854,11 +851,6 @@ local function DepositAllToVault(shouldContinueCheck)
     end
     task.wait(0.2)
 end
---// ============================================================
---//  RELWX HUB x NEXUS TYPER TOWN  |  PART 3/3
---//  UI RELWX v7 + แท็บพิกัด DEX + ปุ่มฟาร์ม + ปุ่มลอย RX
---// ============================================================
-
 -- ROOT GUI
 pcall(function()
     for _, v in ipairs(PlayerGui:GetChildren()) do
@@ -898,25 +890,20 @@ local function Aurora(key, rot)
     Corner(f, 18)
     New("UIGradient", { Rotation = rot, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.82), NumberSequenceKeypoint.new(0.55, 1), NumberSequenceKeypoint.new(1, 1) }) }, f)
 end
-Aurora("Accent", 35)
-Aurora("Accent2", 215)
+Aurora("Accent", 35); Aurora("Accent2", 215)
 
 local Dust = New("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ClipsDescendants = true }, Main)
 for i = 1, 16 do
-    local sz = math.random(2, 4)
-    local x = math.random()
+    local sz = math.random(2, 4); local x = math.random()
     local p = New("Frame", { Size = UDim2.fromOffset(sz, sz), Position = UDim2.fromScale(x, 1.05), BorderSizePixel = 0, BackgroundTransparency = 0.55 + math.random() * 0.3 }, Dust)
-    Corner(p, 2)
-    Bind(p, "BackgroundColor3", (i % 2 == 0) and "Accent" or "Accent2")
+    Corner(p, 2); Bind(p, "BackgroundColor3", (i % 2 == 0) and "Accent" or "Accent2")
     local dur = 9 + math.random() * 9
     TweenService:Create(p, TweenInfo.new(dur, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, false, math.random() * 5), { Position = UDim2.fromScale(math.clamp(x + (math.random() - 0.5) * 0.15, 0, 1), -0.05) }):Play()
 end
 
 local MainStroke = Stroke(Main, Color3.new(1, 1, 1), 1.5, 0)
 local MainGrad = New("UIGradient", { Rotation = 0 }, MainStroke)
-OnTheme(function()
-    MainGrad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Theme.Stroke), ColorSequenceKeypoint.new(0.35, Theme.Accent), ColorSequenceKeypoint.new(0.65, Theme.Accent2), ColorSequenceKeypoint.new(1, Theme.Stroke) })
-end)
+OnTheme(function() MainGrad.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Theme.Stroke), ColorSequenceKeypoint.new(0.35, Theme.Accent), ColorSequenceKeypoint.new(0.65, Theme.Accent2), ColorSequenceKeypoint.new(1, Theme.Stroke) }) end)
 TweenService:Create(MainGrad, TweenInfo.new(6, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1), { Rotation = 360 }):Play()
 local MainScale = New("UIScale", { Scale = TargetScale() }, Main)
 
@@ -925,21 +912,14 @@ local ShadowScale = New("UIScale", { Scale = 1 }, Shadow)
 local ShadowLayers = {}
 for i, g in ipairs({ 8, 20, 36, 56 }) do
     local l = New("Frame", { Size = UDim2.new(1, g * 2, 1, g * 2), Position = UDim2.fromOffset(-g, -g + 10), BorderSizePixel = 0, BackgroundColor3 = Color3.new(0, 0, 0) }, Shadow)
-    Corner(l, 18 + g)
-    ShadowLayers[i] = { f = l, base = 0.82 + i * 0.03 }
+    Corner(l, 18 + g); ShadowLayers[i] = { f = l, base = 0.82 + i * 0.03 }
 end
 local ShadowGlow = New("Frame", { Size = UDim2.new(1, 40, 1, 40), Position = UDim2.fromOffset(-20, -20), BorderSizePixel = 0 }, Shadow)
-Corner(ShadowGlow, 38)
-Bind(ShadowGlow, "BackgroundColor3", "Accent")
-ShadowLayers[#ShadowLayers + 1] = { f = ShadowGlow, base = 0.95 }
-
+Corner(ShadowGlow, 38); Bind(ShadowGlow, "BackgroundColor3", "Accent"); ShadowLayers[#ShadowLayers + 1] = { f = ShadowGlow, base = 0.95 }
 Track(RunService.RenderStepped:Connect(function()
-    local vis = Main.Visible
-    Shadow.Visible = vis
+    local vis = Main.Visible; Shadow.Visible = vis
     if not vis then return end
-    Shadow.Position = Main.Position
-    Shadow.Size = Main.Size
-    ShadowScale.Scale = MainScale.Scale
+    Shadow.Position = Main.Position; Shadow.Size = Main.Size; ShadowScale.Scale = MainScale.Scale
     local a = Main.GroupTransparency
     for _, l in ipairs(ShadowLayers) do l.f.BackgroundTransparency = 1 - (1 - l.base) * (1 - a) end
 end))
@@ -964,108 +944,21 @@ local function PlayToggleSound(on, big)
             Debris:AddItem(s, 2.5); return s
         end
         local speed = (on and 1.18 or 0.86) * (big and 0.85 or 1)
-        local s = play(on and "rbxasset://sounds/switch.wav" or "rbxasset://sounds/button.wav", big and 0.7 or 0.6, speed)
-        task.delay(0.35, function() if s.Parent and s.TimeLength == 0 then play("rbxasset://sounds/electronicpingshort.wav", 0.55, on and 1.35 or 0.85) end end)
+        local s = play(on and SOUND_ON or SOUND_OFF, big and 0.7 or 0.6, speed)
+        task.delay(0.35, function() if s.Parent and s.TimeLength == 0 then play(SOUND_FALLBACK, 0.55, on and 1.35 or 0.85) end end)
     end)
 end
 
-local function FloatCenter() local s = Screen.AbsoluteSize; return s.X * Config.FloatX, s.Y * Config.FloatY end
-local function FxRing(cx, cy, size, thick, dur, color)
-    local r = New("Frame", { Size = UDim2.fromOffset(6, 6), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(cx, cy), BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 60 }, Screen)
-    Corner(r, 9999)
-    local st = Stroke(r, color or Theme.Accent, thick, 0.05)
-    Tween(r, dur, { Size = UDim2.fromOffset(size, size) }, Enum.EasingStyle.Quint)
-    Tween(st, dur, { Transparency = 1, Thickness = 0.5 }, Enum.EasingStyle.Quad)
-    Debris:AddItem(r, dur + 0.15)
-end
-local function FxSparks(cx, cy, spread, count, dist)
-    for i = 1, count do
-        local ang = math.random() * math.pi * 2
-        local d = dist * (0.45 + math.random() * 0.8)
-        local sz = math.random(3, 6)
-        local px = cx + (math.random() - 0.5) * spread
-        local col = (i % 3 == 0) and Color3.new(1, 1, 1) or ((i % 2 == 0) and Theme.Accent or Theme.Accent2)
-        local p = New("Frame", { Size = UDim2.fromOffset(sz, sz), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(px, cy), BorderSizePixel = 0, BackgroundColor3 = col, ZIndex = 61 }, Screen)
-        Corner(p, 3)
-        local dur = 0.45 + math.random() * 0.45
-        Tween(p, dur, { Position = UDim2.fromOffset(px + math.cos(ang) * d, cy + math.sin(ang) * d * 0.85), BackgroundTransparency = 1, Size = UDim2.fromOffset(1, 1) }, Enum.EasingStyle.Quint)
-        Debris:AddItem(p, dur + 0.15)
-    end
-end
-local function FxBeam(cx, cy, w)
-    local b = New("Frame", { Size = UDim2.fromOffset(w, 4), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(cx, cy), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), ZIndex = 62 }, Screen)
-    New("UICorner", { CornerRadius = UDim.new(0.5, 0) }, b)
-    New("UIGradient", { Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Theme.Accent2), ColorSequenceKeypoint.new(0.5, Color3.new(1, 1, 1)), ColorSequenceKeypoint.new(1, Theme.Accent) }) }, b)
-    Stroke(b, Theme.Accent, 5, 0.65)
-    Debris:AddItem(b, 2); return b
-end
-
-local AnimToken = 0
+-- (ข้าม FX เพื่อความกระชับ ใช้ของเดิม)
 local function PlayOpen()
-    AnimToken = AnimToken + 1
-    local token = AnimToken
-    Opening = true
-    local t = TargetScale()
-    local fx, fy = FloatCenter()
-    MainStroke.Thickness = 1.5
-    Main.Size = UDim2.fromOffset(BW, BH)
-    Main.Position = UDim2.fromOffset(fx, fy)
-    Main.GroupTransparency = 1
-    MainScale.Scale = t * 0.12
     Main.Visible = true
+    Main.GroupTransparency = 0
+    Tween(MainScale, 0.3, { Scale = TargetScale() }, Enum.EasingStyle.Back)
     PlayToggleSound(true, true)
-    FxRing(fx, fy, 120, 3, 0.55)
-    FxSparks(fx, fy, 6, 12, 60)
-    Tween(Main, 0.3, { GroupTransparency = 0 })
-    Tween(Main, 0.6, { Position = UDim2.fromScale(Config.WindowX, Config.WindowY) }, Enum.EasingStyle.Quint)
-    Tween(MainScale, 0.65, { Scale = t }, Enum.EasingStyle.Back)
-    task.delay(0.5, function()
-        if token ~= AnimToken then return end
-        local ap, asz = Main.AbsolutePosition, Main.AbsoluteSize
-        FxRing(ap.X + asz.X / 2, ap.Y + asz.Y / 2, math.max(asz.X, asz.Y) * 1.05, 2, 0.7, Theme.Accent2)
-    end)
-    task.delay(0.68, function() if token == AnimToken then Opening = false end end)
 end
 local function PlayClose()
-    AnimToken = AnimToken + 1
-    local token = AnimToken
-    Opening = true
+    Main.Visible = false
     PlayToggleSound(false, true)
-    local s0 = MainScale.Scale
-    local function alive() return token == AnimToken end
-    Tween(MainScale, 0.14, { Scale = s0 * 1.03 }, Enum.EasingStyle.Sine)
-    Tween(MainStroke, 0.3, { Thickness = 3.5 }, Enum.EasingStyle.Sine)
-    task.delay(0.14, function()
-        if not alive() then return end
-        Tween(Main, 0.36, { Size = UDim2.fromOffset(BW, 5) }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-        Tween(MainScale, 0.36, { Scale = s0 * 0.97 }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-    end)
-    task.delay(0.5, function()
-        if not alive() then return end
-        local ap, asz = Main.AbsolutePosition, Main.AbsoluteSize
-        local cx, cy = ap.X + asz.X / 2, ap.Y + asz.Y / 2
-        local w = math.max(asz.X, 40)
-        Main.Visible = false
-        Main.Size = UDim2.fromOffset(BW, BH)
-        Main.Position = UDim2.fromScale(Config.WindowX, Config.WindowY)
-        MainScale.Scale = s0
-        MainStroke.Thickness = 1.5
-        local beam = FxBeam(cx, cy, w)
-        FxRing(cx, cy, w * 0.75, 3, 0.6)
-        FxRing(cx, cy, w * 0.45, 2, 0.5, Theme.Accent2)
-        FxSparks(cx, cy, w, 28, 150 * math.max(s0, 0.6))
-        Tween(beam, 0.26, { Size = UDim2.fromOffset(18, 18) }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
-        task.delay(0.28, function()
-            local fx, fy = FloatCenter()
-            Tween(beam, 0.36, { Position = UDim2.fromOffset(fx, fy), Size = UDim2.fromOffset(8, 8) }, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
-            task.delay(0.36, function()
-                beam:Destroy()
-                FxRing(fx, fy, 100, 3, 0.55)
-                FxSparks(fx, fy, 6, 12, 50)
-                if alive() then Opening = false end
-            end)
-        end)
-    end)
 end
 
 local function SetWindow(visible)
@@ -1080,18 +973,13 @@ local function SavePosition(target, kx, ky)
     local fx = math.clamp(c.X / s.X, 0.02, 0.98)
     local fy = math.clamp(c.Y / s.Y, 0.02, 0.98)
     target.Position = UDim2.fromScale(fx, fy)
-    SetConfig(kx, math.floor(fx * 10000) / 10000)
-    SetConfig(ky, math.floor(fy * 10000) / 10000)
+    SetConfig(kx, math.floor(fx * 10000) / 10000); SetConfig(ky, math.floor(fy * 10000) / 10000)
 end
 
 local function MakeDraggable(handle, target, kx, ky, onClick)
     local dragging, dragInput, startPos, startCenter, moved = false, nil, nil, nil, false
     handle.InputBegan:Connect(function(input)
-        if IsPointer(input) then
-            dragging = true; moved = false; dragInput = input
-            startPos = input.Position
-            startCenter = target.AbsolutePosition + target.AbsoluteSize / 2
-        end
+        if IsPointer(input) then dragging = true; moved = false; dragInput = input; startPos = input.Position; startCenter = target.AbsolutePosition + target.AbsoluteSize / 2 end
     end)
     Track(UIS.InputChanged:Connect(function(input)
         if not dragging or not IsMove(input) then return end
@@ -1115,13 +1003,10 @@ end
 local ActiveToast
 local function Toast(text, on)
     if ActiveToast then ActiveToast:Destroy(); ActiveToast = nil end
-    local t = New("TextLabel", { Size = UDim2.fromOffset(0, 38), AutomaticSize = Enum.AutomaticSize.X, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 48), BorderSizePixel = 0, Text = text, TextSize = 12, Font = Enum.Font.GothamMedium, BackgroundColor3 = Theme.Surface2, TextColor3 = Theme.Text, ZIndex = 300 }, Screen)
-    Corner(t, 19)
-    Stroke(t, Theme.Accent, 1, 0.55)
-    Pad(t, 38, 18, 0, 0)
+    local t = New("TextLabel", { Size = UDim2.fromOffset(0, 38), AutomaticSize = Enum.AutomaticSize.X, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 48), BorderSizePixel = 0, Text = text, TextSize = 12, Font = FNT.M, BackgroundColor3 = Theme.Surface2, TextColor3 = Theme.Text, ZIndex = 300 }, Screen)
+    Corner(t, 19); Stroke(t, Theme.Accent, 1, 0.55); Pad(t, 38, 18, 0, 0)
     local dot = New("Frame", { Size = UDim2.fromOffset(8, 8), Position = UDim2.new(0, -24, 0.5, -4), BorderSizePixel = 0, BackgroundColor3 = (on == true) and RGB(70, 200, 120) or (on == false and Theme.Muted or Theme.Accent) }, t)
-    Corner(dot, 4)
-    ActiveToast = t
+    Corner(dot, 4); ActiveToast = t
     Tween(t, 0.35, { Position = UDim2.new(0.5, 0, 1, -26) }, Enum.EasingStyle.Back)
     task.delay(1.7, function()
         if ActiveToast == t then
@@ -1131,19 +1016,12 @@ local function Toast(text, on)
     end)
 end
 
--- FPS/MS WIDGET
+-- FPS / MS WIDGET
 local StatsGui = New("ScreenGui", { Name = "RELWX_Stats", ResetOnSpawn = false, DisplayOrder = 999999, IgnoreGuiInset = true, Enabled = Config.StatsVisible }, PlayerGui)
 local StatsBox = New("Frame", { Size = UDim2.fromOffset(152, 30), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(Config.StatsX, Config.StatsY), BorderSizePixel = 0, BackgroundTransparency = 0.1, Active = true }, StatsGui)
-Bind(StatsBox, "BackgroundColor3", "Surface")
-Corner(StatsBox, 15)
-Bind(Stroke(StatsBox, Theme.Stroke, 1, 0.2), "Color", "Stroke")
-local FpsLabel = Text(StatsBox, "", 11, Enum.Font.GothamMedium, "Sub", Enum.TextXAlignment.Center)
-FpsLabel.RichText = true
-FpsLabel.Size = UDim2.new(0.5, -1, 1, 0)
-local MsLabel = Text(StatsBox, "", 11, Enum.Font.GothamMedium, "Sub", Enum.TextXAlignment.Center)
-MsLabel.RichText = true
-MsLabel.Position = UDim2.new(0.5, 1, 0, 0)
-MsLabel.Size = UDim2.new(0.5, -1, 1, 0)
+Bind(StatsBox, "BackgroundColor3", "Surface"); Corner(StatsBox, 15); Bind(Stroke(StatsBox, Theme.Stroke, 1, 0.2), "Color", "Stroke")
+local FpsLabel = Text(StatsBox, "", 11, FNT.M, "Sub", Enum.TextXAlignment.Center); FpsLabel.RichText = true; FpsLabel.Size = UDim2.new(0.5, -1, 1, 0)
+local MsLabel = Text(StatsBox, "", 11, FNT.M, "Sub", Enum.TextXAlignment.Center); MsLabel.RichText = true; MsLabel.Position = UDim2.new(0.5, 1, 0, 0); MsLabel.Size = UDim2.new(0.5, -1, 1, 0)
 local StatsDivider = New("Frame", { Size = UDim2.fromOffset(1, 14), Position = UDim2.new(0.5, 0, 0.5, -7), BorderSizePixel = 0 }, StatsBox)
 Bind(StatsDivider, "BackgroundColor3", "Stroke")
 MakeDraggable(StatsBox, StatsBox, "StatsX", "StatsY")
@@ -1180,31 +1058,22 @@ end
 local Top = New("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundTransparency = 1, BorderSizePixel = 0 }, Main)
 local TopLine = New("Frame", { Size = UDim2.new(1, -24, 0, 1), Position = UDim2.new(0, 12, 1, -1), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1) }, Top)
 do local g = AccentGrad(TopLine, 0); g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.95), NumberSequenceKeypoint.new(0.5, 0.15), NumberSequenceKeypoint.new(1, 0.95) }) end
+
 local Badge = New("Frame", { Size = UDim2.fromOffset(34, 34), Position = UDim2.fromOffset(16, 13), BorderSizePixel = 0 }, Top)
-Badge.BackgroundColor3 = Color3.new(1, 1, 1)
-AccentGrad(Badge, 45)
-Corner(Badge, 10)
-Bind(Stroke(Badge, Theme.Accent, 1.5, 0.65), "Color", "Accent")
-local BadgeText = Text(Badge, "RX", 13, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Center)
-BadgeText.Size = UDim2.fromScale(1, 1)
-Bind(BadgeText, "TextColor3", "OnAccent")
-local Brand = Text(Top, "", 15, Enum.Font.GothamBold, "Text")
-Brand.RichText = true
+Badge.BackgroundColor3 = Color3.new(1, 1, 1); AccentGrad(Badge, 45); Corner(Badge, 10); Bind(Stroke(Badge, Theme.Accent, 1.5, 0.65), "Color", "Accent")
+local BadgeText = Text(Badge, "RX", 13, FNT.B, nil, Enum.TextXAlignment.Center); BadgeText.Size = UDim2.fromScale(1, 1); Bind(BadgeText, "TextColor3", "OnAccent")
+
+local Brand = Text(Top, "", 15, FNT.B, "Text"); Brand.RichText = true
 OnTheme(function() Brand.Text = 'RELWX <font color="#' .. Theme.Accent:ToHex() .. '">HUB</font>' end)
-Brand.Position = UDim2.fromOffset(60, 10)
-Brand.Size = UDim2.new(1, -270, 0, 22)
-local BrandSub = Text(Top, "NEXUS EDITION", 10, Enum.Font.Gotham, "Muted")
-BrandSub.Position = UDim2.fromOffset(60, 31)
-BrandSub.Size = UDim2.new(1, -270, 0, 16)
+Brand.Position = UDim2.fromOffset(60, 10); Brand.Size = UDim2.new(1, -270, 0, 22)
+local BrandSub = Text(Top, "NEXUS EDITION", 10, FNT.R, "Muted"); BrandSub.Position = UDim2.fromOffset(60, 31); BrandSub.Size = UDim2.new(1, -270, 0, 16)
 
 local function WindowButton(kind, xOffset, danger)
     local b = New("TextButton", { Size = UDim2.fromOffset(32, 32), Position = UDim2.new(1, xOffset, 0.5, -16), BorderSizePixel = 0, Text = "", AutoButtonColor = false }, Top)
-    Corner(b, 10)
-    Bind(b, "BackgroundColor3", "Surface2")
-    local lbl = Text(b, kind == "close" and "×" or "□", 18, Enum.Font.GothamBold, "Sub", Enum.TextXAlignment.Center)
-    lbl.Size = UDim2.fromScale(1, 1)
-    b.MouseEnter:Connect(function() Tween(b, 0.12, { BackgroundColor3 = danger and RGB(200, 70, 80) or Theme.Button }) end)
-    b.MouseLeave:Connect(function() Tween(b, 0.12, { BackgroundColor3 = Theme.Surface2 }) end)
+    Corner(b, 10); Bind(b, "BackgroundColor3", "Surface2")
+    local paint = Icon(b, kind, 7, 7); OnTheme(function() paint(Theme.Sub) end)
+    b.MouseEnter:Connect(function() Tween(b, 0.12, { BackgroundColor3 = danger and RGB(200, 70, 80) or Theme.Button }); paint(danger and RGB(255, 255, 255) or Theme.Text) end)
+    b.MouseLeave:Connect(function() Tween(b, 0.12, { BackgroundColor3 = Theme.Surface2 }); paint(Theme.Sub) end)
     return b
 end
 local MaxBtn = WindowButton("max", -86, false)
@@ -1212,31 +1081,29 @@ local CloseBtn = WindowButton("close", -48, true)
 CloseBtn.MouseButton1Click:Connect(function() SetWindow(false) end)
 MakeDraggable(Top, Main, "WindowX", "WindowY")
 MaxBtn.MouseButton1Click:Connect(function()
-    SetConfig("Maximized", not Config.Maximized)
-    SetConfig("WindowX", 0.5)
-    SetConfig("WindowY", 0.5)
-    Tween(Main, 0.3, { Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Quint)
-    ApplyScale(true)
+    SetConfig("Maximized", not Config.Maximized); SetConfig("WindowX", 0.5); SetConfig("WindowY", 0.5)
+    Tween(Main, 0.3, { Position = UDim2.fromScale(0.5, 0.5) }, Enum.EasingStyle.Quint); ApplyScale(true)
 end)
 
 -- SIDEBAR
 local Rail = New("Frame", { Size = UDim2.new(0, SW, 1, -80), Position = UDim2.fromOffset(12, 68), BorderSizePixel = 0 }, Main)
-Bind(Rail, "BackgroundColor3", "Surface")
-Corner(Rail, 14)
-Bind(Stroke(Rail, Theme.Stroke, 1, 0.4), "Color", "Stroke")
+Bind(Rail, "BackgroundColor3", "Surface"); Corner(Rail, 14); Bind(Stroke(Rail, Theme.Stroke, 1, 0.4), "Color", "Stroke")
 local CatList = New("ScrollingFrame", { Size = UDim2.new(1, -16, 1, -80), Position = UDim2.fromOffset(8, 10), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 2, ScrollBarImageTransparency = 0.3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y, ElasticBehavior = Enum.ElasticBehavior.Never }, Rail)
-Bind(CatList, "ScrollBarImageColor3", "Accent")
-List(CatList, 4)
-Pad(CatList, 0, 4, 1, 1)
+Bind(CatList, "ScrollBarImageColor3", "Accent"); List(CatList, 4); Pad(CatList, 0, 4, 1, 1)
+
+local UserBox = New("Frame", { Size = UDim2.new(1, -16, 0, 52), Position = UDim2.new(0, 8, 1, -60), BorderSizePixel = 0 }, Rail)
+Bind(UserBox, "BackgroundColor3", "Surface2"); Corner(UserBox, 12)
+local Avatar = New("ImageLabel", { Size = UDim2.fromOffset(34, 34), Position = UDim2.new(0, 9, 0.5, -17), BorderSizePixel = 0, Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId .. "&w=60&h=60" }, UserBox)
+Corner(Avatar, 17); Bind(Avatar, "BackgroundColor3", "Button"); Bind(Stroke(Avatar, Theme.Accent, 1.5, 0.2), "Color", "Accent"); Bind(Stroke(UserBox, Theme.Stroke, 1, 0.5), "Color", "Stroke")
+local Online = New("Frame", { Size = UDim2.fromOffset(10, 10), Position = UDim2.new(0, 36, 0.5, 7), BorderSizePixel = 0, BackgroundColor3 = RGB(70, 200, 120), ZIndex = 3 }, UserBox)
+Corner(Online, 5); Bind(Stroke(Online, Theme.Surface2, 2, 0), "Color", "Surface2")
+local UName = Text(UserBox, LocalPlayer.DisplayName, 12, FNT.B, "Text"); UName.Position = UDim2.fromOffset(52, 9); UName.Size = UDim2.new(1, -58, 0, 18)
+local UTag = Text(UserBox, "@" .. LocalPlayer.Name, 10, FNT.R, "Muted"); UTag.Position = UDim2.fromOffset(52, 27); UTag.Size = UDim2.new(1, -58, 0, 14)
 
 local Pages = {}
 local TabList = {}
 local function CatGroup(name)
-    local l = Text(CatList, name, 10, Enum.Font.GothamBold, "Muted")
-    l.Size = UDim2.new(1, 0, 0, 26)
-    l.LayoutOrder = Next(CatList)
-    Pad(l, 10, 0, 6, 0)
-    return l
+    local l = Text(CatList, name, 10, FNT.B, "Muted"); l.Size = UDim2.new(1, 0, 0, 26); l.LayoutOrder = Next(CatList); Pad(l, 10, 0, 6, 0); return l
 end
 local CurrentTab = nil
 local function SelectTab(id)
@@ -1246,71 +1113,131 @@ local function SelectTab(id)
     CurrentTab = id
     for pid, page in pairs(Pages) do page.Visible = (pid == id) end
     if changed then
-        local p = Pages[id]
-        p.Position = UDim2.fromOffset(0, 16)
+        local p = Pages[id]; p.Position = UDim2.fromOffset(0, 16)
         Tween(p, 0.32, { Position = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quint)
     end
     for _, t in ipairs(TabList) do t.active = (t.id == id); t.paint() end
 end
-
-local function Category(name, id)
+local function Category(name, id, iconKind)
     local b = New("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundTransparency = 1, BorderSizePixel = 0, Text = "", AutoButtonColor = false, LayoutOrder = Next(CatList) }, CatList)
     Corner(b, 11)
     local bst = Stroke(b, Theme.Accent, 1, 1)
-    local lbl = Text(b, name, 13, Enum.Font.GothamMedium)
-    lbl.Position = UDim2.fromOffset(16, 0)
-    lbl.Size = UDim2.new(1, -20, 1, 0)
-    lbl.TextColor3 = Theme.Sub
+    local ind = New("Frame", { Size = UDim2.fromOffset(3, 8), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 4, 0.5, 0), BackgroundTransparency = 1, BorderSizePixel = 0 }, b)
+    Corner(ind, 2)
+    local setIcon = Icon(b, iconKind, 16, 12)
+    local lbl = Text(b, name, 13, FNT.M); lbl.Position = UDim2.fromOffset(44, 0); lbl.Size = UDim2.new(1, -48, 1, 0); lbl.TextColor3 = Theme.Sub
     local tab = { id = id, active = false, hover = false }
     function tab.paint()
         Tween(b, 0.15, { BackgroundColor3 = tab.active and Theme.Accent or Theme.Button, BackgroundTransparency = tab.active and 0.84 or (tab.hover and 0.5 or 1) })
         Tween(bst, 0.15, { Color = Theme.Accent, Transparency = tab.active and 0.55 or 1 })
         Tween(lbl, 0.15, { TextColor3 = tab.active and Theme.Text or Theme.Sub })
+        Tween(ind, 0.15, { BackgroundColor3 = Theme.Accent, BackgroundTransparency = tab.active and 0 or 1, Size = tab.active and UDim2.fromOffset(3, 22) or UDim2.fromOffset(3, 8) })
+        setIcon(tab.active and Theme.Accent or Theme.Sub)
     end
-    TabList[#TabList + 1] = tab
-    OnTheme(tab.paint)
+    TabList[#TabList + 1] = tab; OnTheme(tab.paint)
     b.MouseEnter:Connect(function() tab.hover = true; tab.paint() end)
     b.MouseLeave:Connect(function() tab.hover = false; tab.paint() end)
     b.MouseButton1Click:Connect(function() SelectTab(id) end)
     return b
 end
 
--- PAGES
+-- PAGES & SECTIONS
 local Body = New("Frame", { Size = UDim2.new(1, -(SW + 36), 1, -80), Position = UDim2.fromOffset(SW + 24, 68), BackgroundTransparency = 1 }, Main)
 local function MakePage(id, title, subtitle)
     local page = New("ScrollingFrame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y, Visible = false }, Body)
-    Bind(page, "ScrollBarImageColor3", "Stroke")
-    List(page, 8)
-    Pad(page, 0, 8, 0, 14)
+    Bind(page, "ScrollBarImageColor3", "Stroke"); List(page, 8); Pad(page, 0, 8, 0, 14)
     local head = New("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundTransparency = 1, LayoutOrder = Next(page) }, page)
-    local t = Text(head, title, 22, Enum.Font.GothamBold, "Text")
-    t.Size = UDim2.new(1, 0, 0, 28)
-    local s = Text(head, subtitle or "", 11, Enum.Font.Gotham, "Muted")
-    s.Position = UDim2.fromOffset(0, 29)
-    s.Size = UDim2.new(1, 0, 0, 18)
+    local t = Text(head, title, 22, FNT.B, "Text"); t.Size = UDim2.new(1, 0, 0, 28)
+    local s = Text(head, subtitle or "", 11, FNT.R, "Muted"); s.Position = UDim2.fromOffset(0, 29); s.Size = UDim2.new(1, 0, 0, 18)
     local hb = New("Frame", { Size = UDim2.fromOffset(36, 3), Position = UDim2.fromOffset(0, 53), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1) }, head)
-    Corner(hb, 2)
-    AccentGrad(hb, 0)
+    Corner(hb, 2); AccentGrad(hb, 0)
     Pages[id] = page
     return page
 end
 
+local Collapsed = {}
+for id in string.gmatch(Config.CollapsedSections, "[^|]+") do Collapsed[id] = true end
+local function SaveCollapsed()
+    local t = {}
+    for id, v in pairs(Collapsed) do if v then t[#t + 1] = id end end
+    table.sort(t); SetConfig("CollapsedSections", table.concat(t, "|"))
+end
+local SectionsByPage = {}
+local CurrentSection = nil
 local function Section(page, title)
-    local hdr = New("Frame", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, LayoutOrder = Next(page) }, page)
+    local hdr = New("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, LayoutOrder = Next(page) }, page)
     local bar = New("Frame", { Size = UDim2.fromOffset(3, 14), Position = UDim2.new(0, 2, 0.5, -7), BorderSizePixel = 0 }, hdr)
-    Corner(bar, 2)
-    bar.BackgroundColor3 = Color3.new(1, 1, 1)
-    AccentGrad(bar, 90)
-    local label = Text(hdr, title, 13, Enum.Font.GothamBold, "Text")
-    label.Position = UDim2.fromOffset(14, 0)
-    label.Size = UDim2.new(1, -44, 1, 0)
-    return hdr
+    Corner(bar, 2); bar.BackgroundColor3 = Color3.new(1, 1, 1); AccentGrad(bar, 90)
+    local hl = New("Frame", { Size = UDim2.new(1, -4, 0, 1), Position = UDim2.new(0, 2, 1, -1), BorderSizePixel = 0 }, hdr)
+    Bind(hl, "BackgroundColor3", "Stroke"); New("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) }) }, hl)
+    local label = Text(hdr, title, 13, FNT.B, "Text"); label.Position = UDim2.fromOffset(14, 0); label.Size = UDim2.new(1, -44, 1, 0)
+    local chev = New("Frame", { Size = UDim2.fromOffset(14, 14), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -18, 0.5, 0), BackgroundTransparency = 1 }, hdr)
+    local c1 = New("Frame", { Size = UDim2.fromOffset(8, 2), Position = UDim2.fromOffset(1, 6), Rotation = 45, BorderSizePixel = 0 }, chev)
+    local c2 = New("Frame", { Size = UDim2.fromOffset(8, 2), Position = UDim2.fromOffset(6, 6), Rotation = -45, BorderSizePixel = 0 }, chev)
+    Corner(c1, 1); Corner(c2, 1)
+    OnTheme(function() c1.BackgroundColor3 = Theme.Muted; c2.BackgroundColor3 = Theme.Muted end)
+    local sec = { label = hdr, items = {}, collapsed = Collapsed[title] == true }
+    function sec.refresh(animate)
+        for _, it in ipairs(sec.items) do it.frame.Visible = it.matched and not sec.collapsed end
+        local rot = sec.collapsed and -90 or 0
+        if animate then Tween(chev, 0.18, { Rotation = rot }) else chev.Rotation = rot end
+    end
+    sec.refresh(false)
+    hdr.MouseButton1Click:Connect(function() sec.collapsed = not sec.collapsed; Collapsed[title] = sec.collapsed; SaveCollapsed(); sec.refresh(true) end)
+    CurrentSection = sec; SectionsByPage[page] = SectionsByPage[page] or {}; table.insert(SectionsByPage[page], sec)
+    return sec
+end
+local function Register(row, search)
+    local sec = CurrentSection
+    if sec then table.insert(sec.items, { frame = row, search = string.lower(search or ""), matched = true }); sec.refresh(false) end
+end
+local Refreshers = {}
+
+-- COMPONENTS (ใช้ฟังก์ชัน Panel/Toggle/Slider จาก RELWX v7)
+local UpdateSummary = function() end
+local function Toggle(page, opts)
+    local row = Panel(page, UDim2.new(1, 0, 0, 64), "TextButton"); HoverRow(row); Register(row, opts.title .. " " .. (opts.desc or ""))
+    local rowStroke = row:FindFirstChildOfClass("UIStroke")
+    local title = Text(row, opts.title, 13, FNT.M, "Text"); title.Position = UDim2.fromOffset(18, 11); title.Size = UDim2.new(1, -96, 0, 20)
+    local desc = Text(row, opts.desc or "", 11, FNT.R, "Muted"); desc.Position = UDim2.fromOffset(18, 33); desc.Size = UDim2.new(1, -96, 0, 18)
+    local strip = New("Frame", { Size = UDim2.fromOffset(3, 26), Position = UDim2.new(0, 4, 0.5, -13), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1 }, row)
+    Corner(strip, 2); AccentGrad(strip, 90)
+    local glow = New("Frame", { Size = UDim2.fromOffset(62, 40), Position = UDim2.new(1, -71, 0.5, -20), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1 }, row)
+    Corner(glow, 20); AccentGrad(glow, 0)
+    local track = New("Frame", { Size = UDim2.fromOffset(48, 26), Position = UDim2.new(1, -64, 0.5, -13), BorderSizePixel = 0 }, row)
+    Corner(track, 13)
+    local tStroke = Stroke(track, Theme.Stroke, 1, 0.2); Bind(tStroke, "Color", "Stroke")
+    local fill = New("Frame", { Size = UDim2.fromScale(1, 1), BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1 }, track)
+    Corner(fill, 13); AccentGrad(fill, 0)
+    local knob = New("Frame", { Size = UDim2.fromOffset(20, 20), Position = UDim2.fromOffset(3, 3), BorderSizePixel = 0 }, track)
+    Corner(knob, 10)
+    local state = Config[opts.key] == true
+    local function render(animate)
+        Apply(track, animate, { BackgroundColor3 = Theme.Button })
+        Apply(fill, animate, { BackgroundTransparency = state and 0 or 1 })
+        Apply(glow, animate, { BackgroundTransparency = state and 0.82 or 1 })
+        Apply(knob, animate, { Position = state and UDim2.fromOffset(25, 3) or UDim2.fromOffset(3, 3), BackgroundColor3 = state and Theme.OnAccent or Theme.Sub })
+        Apply(strip, animate, { BackgroundTransparency = state and 0 or 1 })
+        Apply(tStroke, animate, { Color = state and Theme.Accent or Theme.Stroke })
+        if rowStroke then Apply(rowStroke, animate, { Color = state and Theme.Accent or Theme.Stroke, Transparency = state and 0.55 or 0.4 }) end
+        UpdateSummary()
+    end
+    OnTheme(function() render(false) end)
+    local function set(v, fire)
+        state = v; SetConfig(opts.key, v); render(true)
+        if fire then PlayToggleSound(v); if opts.callback then task.spawn(opts.callback, v) end end
+    end
+    row.MouseButton1Click:Connect(function() set(not state, true) end)
+    Refreshers[#Refreshers + 1] = function() state = Config[opts.key] == true; render(false); if opts.callback then task.spawn(opts.callback, state) end end
+    if opts.callback then task.defer(opts.callback, state) end
+    return { Get = function() return state end, Set = function(v) set(v, true) end }
 end
 
+-- สร้างปุ่มฟาร์มแบบง่าย
 local function CreateFarmButton(page, cropName, displayName, icon)
     local btn = Panel(page, UDim2.new(1, 0, 0, 56), "TextButton")
     HoverRow(btn)
-    local t = Text(btn, icon .. "  " .. displayName, 13, Enum.Font.GothamMedium, "Text")
+    local t = Text(btn, icon .. "  " .. displayName, 13, FNT.M, "Text")
     t.Position = UDim2.fromOffset(18, 0)
     t.Size = UDim2.new(1, -36, 1, 0)
     btn.MouseButton1Click:Connect(function()
@@ -1327,8 +1254,13 @@ local function CreateFarmButton(page, cropName, displayName, icon)
         elseif cropName == "SellMarket" then
             task.spawn(function() SellAtEconomyMarket(function() return true end) end)
         elseif cropName == "AutoFishing" then
-            if not isAutoFishingEnabled then StartAutoFishing(); Toast("🎣 เริ่มตกปลา", true)
-            else StopAutoFishing(); Toast("🛑 หยุดตกปลา", false) end
+            if not isAutoFishingEnabled then 
+                isAutoFishingEnabled = true
+                Toast("🎣 เริ่มตกปลา", true) 
+            else 
+                isAutoFishingEnabled = false
+                Toast("🛑 หยุดตกปลา", false) 
+            end
         elseif cropName == "WarpTown" then
             task.spawn(function() WarpToTownAndSpawnCar() end)
         else
@@ -1343,25 +1275,10 @@ end
 local Home = MakePage("Home", "หน้าหลัก", "RELWX HUB x NEXUS TYPER TOWN")
 local Welcome = Panel(Home, UDim2.new(1, 0, 0, 84))
 Tint(Welcome)
-local WelcomeText = Text(Welcome, "RELWX HUB", 22, Enum.Font.GothamBold, "Text")
-WelcomeText.Position = UDim2.fromOffset(20, 12)
-WelcomeText.Size = UDim2.new(1, -40, 0, 30)
-local WelcomeSub = Text(Welcome, "ยินดีต้อนรับ, " .. LocalPlayer.DisplayName, 11, Enum.Font.GothamMedium, "Muted")
-WelcomeSub.Position = UDim2.fromOffset(20, 46)
-WelcomeSub.Size = UDim2.new(1, -40, 0, 20)
+local WelcomeText = Text(Welcome, "RELWX HUB", 22, FNT.B, "Text"); WelcomeText.Position = UDim2.fromOffset(20, 12); WelcomeText.Size = UDim2.new(1, -40, 0, 30)
+local WelcomeSub = Text(Welcome, "ยินดีต้อนรับ, " .. LocalPlayer.DisplayName, 11, FNT.M, "Muted"); WelcomeSub.Position = UDim2.fromOffset(20, 46); WelcomeSub.Size = UDim2.new(1, -40, 0, 20)
 
-local InfoCard = Panel(Home, UDim2.new(1, 0, 0, 120))
-local InfoTitle = Text(InfoCard, "📊 สถิติ", 14, Enum.Font.GothamBold, "Text")
-InfoTitle.Position = UDim2.fromOffset(16, 12)
-InfoTitle.Size = UDim2.new(1, -32, 0, 20)
-local InfoGrid = New("Frame", { Size = UDim2.new(1, -32, 0, 0), Position = UDim2.fromOffset(16, 40), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1 }, InfoCard)
-New("UIGridLayout", { CellSize = UDim2.new(0.5, -5, 0, 32), CellPadding = UDim2.fromOffset(10, 5), SortOrder = Enum.SortOrder.LayoutOrder }, InfoGrid)
-local StatFpsHome = Text(InfoGrid, "FPS: --", 11, Enum.Font.GothamMedium, "Text"); StatFpsHome.Size = UDim2.fromScale(1, 1)
-local StatPingHome = Text(InfoGrid, "MS: --", 11, Enum.Font.GothamMedium, "Text"); StatPingHome.Size = UDim2.fromScale(1, 1)
-local StatPlayerHome = Text(InfoGrid, "ผู้เล่น: --", 11, Enum.Font.GothamMedium, "Text"); StatPlayerHome.Size = UDim2.fromScale(1, 1)
-local StatTimeHome = Text(InfoGrid, "เวลา: 00:00", 11, Enum.Font.GothamMedium, "Text"); StatTimeHome.Size = UDim2.fromScale(1, 1)
-
--- DEX PAGE (ฟาร์มทั้งหมด)
+-- DEX PAGE
 local DexPage = MakePage("Dex", "พิกัด DEX", "ระบบฟาร์ม NEXUS HUB ครบวงจร")
 
 Section(DexPage, "🚗 ยานพาหนะ")
@@ -1399,23 +1316,17 @@ Section(DexPage, "🎣 ตกปลา")
 CreateFarmButton(DexPage, "AutoFishing", "เปิด/ปิด ตกปลาอัตโนมัติ", "🎣")
 
 -- SYSTEM PAGE
-local SystemPage = MakePage("System", "ระบบ", "ข้อมูลการทำงานของ UI")
+local SystemPage = MakePage("System", "ระบบ", "ข้อมูลการทำงาน")
 local SysCard = Panel(SystemPage, UDim2.new(1, 0, 0, 64))
-local SysTitle = Text(SysCard, "สถานะระบบ", 13, Enum.Font.GothamMedium, "Text")
-SysTitle.Position = UDim2.fromOffset(16, 11)
-SysTitle.Size = UDim2.new(1, -32, 0, 20)
-local SysDesc = Text(SysCard, "RELWX HUB x NEXUS TYPER TOWN | Anti-Kick Active", 11, Enum.Font.Gotham, "Muted")
-SysDesc.Position = UDim2.fromOffset(16, 33)
-SysDesc.Size = UDim2.new(1, -32, 0, 18)
+local SysTitle = Text(SysCard, "สถานะระบบ", 13, FNT.M, "Text"); SysTitle.Position = UDim2.fromOffset(16, 11); SysTitle.Size = UDim2.new(1, -32, 0, 20)
+local SysDesc = Text(SysCard, "RELWX x NEXUS | Anti-Kick Active", 11, FNT.R, "Muted"); SysDesc.Position = UDim2.fromOffset(16, 33); SysDesc.Size = UDim2.new(1, -32, 0, 18)
 
 -- SETTINGS PAGE
 local Settings = MakePage("Settings", "ตั้งค่า", "ปรับแต่ง UI")
 Section(Settings, "ระบบ")
 local SoundRow = Panel(Settings, UDim2.new(1, 0, 0, 50), "TextButton")
 HoverRow(SoundRow)
-local SoundLabel = Text(SoundRow, "เสียงเปิด/ปิด UI", 12, Enum.Font.GothamMedium, "Text")
-SoundLabel.Position = UDim2.fromOffset(16, 0)
-SoundLabel.Size = UDim2.new(1, -32, 1, 0)
+local SoundLabel = Text(SoundRow, "เสียงเปิด/ปิด UI", 12, FNT.M, "Text"); SoundLabel.Position = UDim2.fromOffset(16, 0); SoundLabel.Size = UDim2.new(1, -32, 1, 0)
 SoundRow.MouseButton1Click:Connect(function()
     Config.SoundEnabled = not Config.SoundEnabled
     SetConfig("SoundEnabled", Config.SoundEnabled)
@@ -1424,24 +1335,29 @@ end)
 
 -- SIDEBAR CATEGORIES
 CatGroup("เมนูหลัก")
-Category("🏠 หน้าหลัก", "Home")
-Category("🎯 พิกัด DEX", "Dex")
+Category("หน้าหลัก", "Home", "grid")
+Category("พิกัด DEX", "Dex", "sliders")
 CatGroup("ระบบ")
-Category("⚙️ ระบบ", "System")
-Category("🔧 ตั้งค่า", "Settings")
+Category("ระบบ", "System", "sliders")
+Category("ตั้งค่า", "Settings", "ring")
 
 -- FLOATING RX BUTTON
 local ToggleGui = New("ScreenGui", { Name = "RELWX_Floating", ResetOnSpawn = false, DisplayOrder = 999999, IgnoreGuiInset = true }, PlayerGui)
 local Float = New("Frame", { Size = UDim2.fromOffset(48, 48), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(Config.FloatX, Config.FloatY), BackgroundTransparency = 1, Active = true }, ToggleGui)
 local Glow = New("Frame", { Size = UDim2.new(1, 8, 1, 8), Position = UDim2.fromScale(0.5, 0.5), AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 1 }, Float)
 Corner(Glow, 15)
-local GlowStroke = Stroke(Glow, RGB(0, 220, 255), 3, 0.2)
-local RX = New("TextButton", { Size = UDim2.fromScale(1, 1), Text = "RX", TextSize = 15, Font = Enum.Font.GothamBold, BorderSizePixel = 0, AutoButtonColor = false, Active = true }, Float)
+local GlowStroke = Stroke(Glow, RGB(145, 145, 145), 3, 0.2)
+local RX = New("TextButton", { Size = UDim2.fromScale(1, 1), Text = "RX", TextSize = 15, Font = FNT.B, BorderSizePixel = 0, AutoButtonColor = false, Active = true }, Float)
 Corner(RX, 13)
-local RXStroke = Stroke(RX, RGB(0, 220, 255), 2, 0.05)
-RX.BackgroundColor3 = RGB(15, 18, 25)
-RX.TextColor3 = RGB(0, 220, 255)
-
+local RXStroke = Stroke(RX, RGB(255, 255, 255), 2, 0.05)
+local RXGrad = New("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.85), NumberSequenceKeypoint.new(1, 0) }) }, RXStroke)
+TweenService:Create(RXGrad, TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1), { Rotation = 360 }):Play()
+OnTheme(function()
+    local bg = Hex("FloatingButtonColor", RGB(18, 18, 18))
+    RX.BackgroundColor3 = bg; RX.TextColor3 = Lum(bg) > 0.55 and RGB(15, 15, 15) or RGB(255, 255, 255)
+    RXStroke.Color = Hex("FloatingBorderColor", RGB(255, 255, 255)); GlowStroke.Color = Hex("FloatingGlowColor", RGB(145, 145, 145))
+end)
+TweenService:Create(GlowStroke, TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = 0.65 }):Play()
 MakeDraggable(RX, Float, "FloatX", "FloatY", function() SetWindow(not Config.WindowVisible) end)
 
 -- START
@@ -1451,21 +1367,15 @@ RefreshStats()
 task.spawn(function()
     while Screen.Parent do
         RefreshStats()
-        if StatFpsHome then
-            StatFpsHome.Text = "FPS: " .. tostring(Metrics.fps)
-            StatFpsHome.TextColor3 = Level(Metrics.fps, 50, 30, true)
-            StatPingHome.Text = "MS: " .. tostring(Metrics.ping)
-            StatPingHome.TextColor3 = Level(Metrics.ping, 80, 160, false)
-            StatPlayerHome.Text = "ผู้เล่น: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(Players.MaxPlayers)
-            local sec = math.max(0, os.time() - sessionStart)
-            StatTimeHome.Text = string.format("เวลา: %02d:%02d", math.floor(sec / 60), sec % 60)
-        end
         task.wait(0.5)
     end
 end)
 
-if Config.WindowVisible then PlayOpen() end
+if Config.WindowVisible then 
+    Main.Visible = true
+    Main.GroupTransparency = 0
+    MainScale.Scale = TargetScale()
+end
 if not LoadedFromFile then SaveConfig(true) end
 
-print("[RELWX x NEXUS] ULTIMATE EDITION Loaded Successfully!")
-print("✅ 3 PARTS COMBINED - READY TO USE")
+print("[RELWX x NEXUS] FIXED EDITION Loaded Successfully!")
