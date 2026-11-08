@@ -506,6 +506,7 @@ local function SavePosition(target, kx, ky)
     SetConfig(ky, math.floor(fy * 10000) / 10000)
 end
 
+-- [แก้ไขบั๊ก] ตัวแปร dragged เปลี่ยนเป็น dragInput เพื่อให้คลิกเปิด UI ได้
 local function MakeDraggable(handle, target, kx, ky, onClick)
     local dragging, dragInput, startPos, startCenter, moved = false, nil, nil, nil, false
     handle.InputBegan:Connect(function(input)
@@ -527,7 +528,7 @@ local function MakeDraggable(handle, target, kx, ky, onClick)
     end))
     Track(UIS.InputEnded:Connect(function(input)
         if dragging and IsPointer(input) then
-            if input.UserInputType == Enum.UserInputType.Touch and input ~= dragged then return end
+            if input.UserInputType == Enum.UserInputType.Touch and input ~= dragInput then return end
             dragging = false
             if moved then SavePosition(target, kx, ky) elseif onClick then onClick() end
         end
@@ -586,7 +587,7 @@ local function StatusPill(parent, width)
 end
 
 --==================================================
--- FPS / MS WIDGET (ทำงานได้จริง)
+-- FPS / MS WIDGET
 --==================================================
 local StatsGui = New("ScreenGui", { Name = "RELWX_Stats", ResetOnSpawn = false, DisplayOrder = 999999, IgnoreGuiInset = true, Enabled = Config.StatsVisible }, PlayerGui)
 local StatsBox = New("Frame", { Size = UDim2.fromOffset(152, 30), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(Config.StatsX, Config.StatsY), BorderSizePixel = 0, BackgroundTransparency = 0.1, Active = true }, StatsGui)
@@ -610,7 +611,6 @@ MakeDraggable(StatsBox, StatsBox, "StatsX", "StatsY")
 
 local Metrics = { fps = 60, ping = 0 }
 
--- คำนวณ FPS จาก RenderStepped
 do
     local frames, acc = 0, 0
     Track(RunService.RenderStepped:Connect(function(dt)
@@ -623,27 +623,18 @@ do
     end))
 end
 
--- ฟังก์ชันดึงค่า Ping ที่แม่นยำและไม่พัง
 local function GetPing()
-    -- วิธีที่ 1: ใช้ GetNetworkPing (เสถียรที่สุด)
-    local ok, ping = pcall(function()
-        return LocalPlayer:GetNetworkPing()
-    end)
+    local ok, ping = pcall(function() return LocalPlayer:GetNetworkPing() end)
     if ok and type(ping) == "number" and ping > 0 then
         return math.floor(ping * 1000 + 0.5)
     end
-    
-    -- วิธีที่ 2: คำนวณจาก ServerTime (Fallback)
     local ok2, ping2 = pcall(function()
         local serverTime = workspace:GetServerTimeNow()
         local localTime = tick()
         local offset = math.abs(serverTime - localTime)
         return math.floor(offset * 1000)
     end)
-    if ok2 and type(ping2) == "number" then
-        return ping2
-    end
-    
+    if ok2 and type(ping2) == "number" then return ping2 end
     return 0
 end
 
@@ -661,7 +652,6 @@ local function RefreshStats()
     
     FpsLabel.Text = string.format('<font color="#%s"><b>%d</b></font> <font color="%s">FPS</font>', fc:ToHex(), Metrics.fps, muted)
     
-    -- ถ้า Ping เป็น 0 ให้แสดงเป็น "N/A" แทน
     if Metrics.ping <= 0 then
         MsLabel.Text = string.format('<font color="#%s"><b>N/A</b></font> <font color="%s">MS</font>', Theme.Muted:ToHex(), muted)
     else
@@ -669,7 +659,6 @@ local function RefreshStats()
     end
 end
 
--- อัปเดตตัวเลขทุกๆ 0.5 วินาที
 task.spawn(function()
     while task.wait(0.5) do
         RefreshStats()
@@ -1116,10 +1105,11 @@ local function OpenPalette(title, key, onPick)
             if not IsPointer(input) then return end
             local p = Vector2.new(input.Position.X, input.Position.Y)
             local a, sz = hit.AbsolutePosition, hit.AbsoluteSize
-            local inset = GuiService:GetGuiInset()
-            local q = p + inset
+            -- [แก้ไข] ป้องกัน GuiInset คืนค่าหลายตัวแปร
+            local okInset, inset = pcall(function() return GuiService:GetGuiInset() end)
+            local q = p + (okInset and inset or Vector2.zero)
             local inside = q.X >= a.X and q.X <= a.X + sz.X and q.Y >= a.Y and q.Y <= a.Y + sz.Y
-            off = inside and inset or Vector2.zero
+            off = inside and (okInset and inset or Vector2.zero) or Vector2.zero
             dragging = true
             dInput = input
             onMove(p + off)
